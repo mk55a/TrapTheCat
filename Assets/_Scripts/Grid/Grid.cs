@@ -44,7 +44,7 @@ public class Grid<TGridObject>
 
         if (showDebug)
         {
-            _debugTextArray = new TextMesh[width/2, height/2];
+            _debugTextArray = new TextMesh[width, height];
 
             for (int x = 0; x < gridArray.GetLength(0); x++)
             {

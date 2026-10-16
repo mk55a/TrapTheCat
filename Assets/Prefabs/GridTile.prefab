@@ -142,4 +142,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7752ec7c66f35ac4d8d3e13a949ed4fe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _tileColor: {r: 1, g: 0.4009434, b: 0.4009434, a: 1}
+  _tileColor: {r: 0.92, g: 0.95, b: 0.82, a: 1}

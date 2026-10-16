@@ -13,9 +13,14 @@ public class GridMapObject
 
     public void SetType(GridType type)
     {
+        if (_type == type)
+            return;
+
         this._type = type;
+        if (_grid != null)
+            _grid.TriggerGridObjectChanged(x, y);
     }
-    public GridType GetType()
+    public GridType GetCellType()
     {
         return this._type;
     }
@@ -25,7 +30,6 @@ public class GridMapObject
     }
     public bool isWalkable
     {
-        get { return _type != GridType.Full; } // Example: Boundaries are not walkable
+        get { return _type != GridType.Full && _type != GridType.Obstacle; }
     }
 }
-

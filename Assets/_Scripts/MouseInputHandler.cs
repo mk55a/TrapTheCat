@@ -1,86 +1,43 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class MouseInputHandler : MonoBehaviour
 {
     public static MouseInputHandler Instance;
 
-    [SerializeField] private bool _canClick;
-
     private void Awake()
     {
-        if(Instance == null)
-        {
-            Instance = this;
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
         }
+        Instance = this;
     }
 
-    private void OnEnable()
+    private void Update()
     {
-        GameManager.OnTurnChanged += HandleTurnChanged; 
+        if (GameManager.Instance == null || GameManager.Instance.IsGameOver ||
+            GameManager.Instance.GetCurrentTurn() != Turn.Player ||
+            !Input.GetMouseButtonDown(0) ||
+            (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()))
+            return;
+
+        Camera mainCamera = Camera.main;
+        GridManager gridManager = GridManager.Instance;
+        if (mainCamera == null || gridManager == null || gridManager.grid == null)
+            return;
+
+        Vector3 worldPosition = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+        worldPosition.z = 0f;
+        GridMapObject cell = gridManager.grid.GetGridObject(worldPosition);
+        if (cell != null && gridManager.SetGridAsFull(cell, worldPosition))
+            GameManager.Instance.RegisterPlayerMove();
     }
 
-    private void OnDisable()
+    private void OnDestroy()
     {
-        GameManager.OnTurnChanged -= HandleTurnChanged;   
+        if (Instance == this)
+            Instance = null;
     }
-
-    void Update()
-    {
-        if (_canClick && Input.GetMouseButtonDown(0))
-        {
-            Vector3 worldPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            worldPosition.z = 0f; 
-
-            GridMapObject gridObject = GridManager.Instance.grid.GetGridObject(worldPosition);
-            
-            if (gridObject != null)
-            {
-                if (gridObject.GetType() == GridType.Empty)
-                {
-                    Debug.Log("Empty Gridobject becoming full");
-                    GridManager.Instance.SetGridAsFull(gridObject, worldPosition);
-                    ToggleCanClick();
-                }
-                else if(gridObject.GetType() == GridType.Full)
-                {
-                    Debug.Log("Select Something else");
-                }
-                else if (gridObject.GetType() == GridType.Cat)
-                {
-                    Debug.LogWarning("You can't select the CAT");
-                }
-                else if(gridObject.GetType() == GridType.Boundary)
-                {
-                    Debug.Log("You JUST HIT THE BOUNDARY");
-                    GridManager.Instance.SetGridAsFull(gridObject, worldPosition);
-                    ToggleCanClick();
-                }
-            }
-        }
-    }
-
-    private void ToggleCanClick()
-    {
-        _canClick = !_canClick;
-        GameManager.Instance.ChangeTurn();
-    }
-
-    private void HandleTurnChanged()
-    {
-        if (GameManager.Instance.GetCurrentTurn() == Turn.Player)
-        {
-            _canClick = true;
-        }
-        else
-        {
-            _canClick = false;
-        }
-    }
-
 }

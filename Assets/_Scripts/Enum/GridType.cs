@@ -4,5 +4,6 @@ public enum GridType
     Empty,
     Full,
     Cat,
-    Boundary
+    Boundary,
+    Obstacle
 }

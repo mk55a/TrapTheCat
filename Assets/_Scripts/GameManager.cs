@@ -1,70 +1,115 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 using System;
-using UnityEngine.UI; 
- 
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
-
     public static event Action OnTurnChanged;
-
-    private Turn _currentTurn;
-    private GridManager gridManager;
+    public static event Action OnPlayerMovePlaced;
 
     [SerializeField] private GameObject _cat;
     [SerializeField] private Button _restartButton;
     [SerializeField] private GameObject _catTrappedScreen;
     [SerializeField] private Button _catTrappedReplayButton;
+    [SerializeField] private LevelDefinition _startingLevel;
 
+    private Turn _currentTurn;
+    private GridManager _gridManager;
+    private CatMovement _catMovement;
+    private LevelDefinition _currentLevel;
+    private LevelLoader _levelLoader;
+    private TutorialPresenter _tutorialPresenter;
+    private TMP_Text _resultLabel;
+    private bool _gameOver;
+
+    public bool IsGameOver
+    {
+        get { return _gameOver; }
+    }
 
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
         }
-    }
-
-    private void Start()
-    {
-        gridManager = GridManager.Instance;
-        PlaceCatAtCenter();
-        _currentTurn = Turn.Player;
-        OnTurnChanged?.Invoke();
-        
+        Instance = this;
     }
 
     private void OnEnable()
     {
-        _restartButton.onClick.AddListener(RestartGame);
-        _catTrappedReplayButton.onClick.AddListener(RestartGame);
+        if (_restartButton != null)
+            _restartButton.onClick.AddListener(RestartGame);
+        if (_catTrappedReplayButton != null)
+            _catTrappedReplayButton.onClick.AddListener(RestartGame);
         CatMovement.OnCatTrapped += OnCatTrapped;
+        CatMovement.OnCatEscaped += OnCatEscaped;
     }
 
     private void OnDisable()
     {
-        _restartButton.onClick.RemoveListener(RestartGame);
-        _catTrappedReplayButton.onClick.RemoveListener(RestartGame);
+        if (_restartButton != null)
+            _restartButton.onClick.RemoveListener(RestartGame);
+        if (_catTrappedReplayButton != null)
+            _catTrappedReplayButton.onClick.RemoveListener(RestartGame);
         CatMovement.OnCatTrapped -= OnCatTrapped;
+        CatMovement.OnCatEscaped -= OnCatEscaped;
+    }
+
+    private void Start()
+    {
+        _gridManager = GridManager.Instance;
+        _catMovement = _cat != null ? _cat.GetComponent<CatMovement>() : null;
+        _resultLabel = _catTrappedScreen != null
+            ? _catTrappedScreen.GetComponentInChildren<TMP_Text>(true)
+            : null;
+        if (_catTrappedScreen != null)
+            _catTrappedScreen.SetActive(false);
+
+        if (_gridManager == null || _cat == null || _catMovement == null)
+        {
+            Debug.LogError("GameManager requires a GridManager, Cat, and CatMovement component.", this);
+            return;
+        }
+
+        _tutorialPresenter = GetComponent<TutorialPresenter>();
+        if (_tutorialPresenter == null)
+            _tutorialPresenter = gameObject.AddComponent<TutorialPresenter>();
+
+        _levelLoader = new LevelLoader(_gridManager, _cat.transform, _catMovement);
+        _currentLevel = _startingLevel != null
+            ? _startingLevel
+            : Resources.Load<LevelDefinition>("Levels/FTUE");
+
+        if (_currentLevel != null)
+        {
+            if (!_levelLoader.Load(_currentLevel))
+            {
+                _currentLevel = null;
+                PlaceCatAtCenter();
+                return;
+            }
+            _tutorialPresenter.Begin(_currentLevel);
+        }
+        else
+        {
+            PlaceCatAtCenter();
+        }
+
+        _gameOver = false;
+        _currentTurn = Turn.Player;
+        OnTurnChanged?.Invoke();
     }
 
     public void ChangeTurn()
     {
-        if (_currentTurn == Turn.Player)
-        {
-            _currentTurn = Turn.Cat;
-        }
-        else
-        {
-            _currentTurn = Turn.Player;
-        }
+        if (_gameOver)
+            return;
 
+        _currentTurn = _currentTurn == Turn.Player ? Turn.Cat : Turn.Player;
         OnTurnChanged?.Invoke();
     }
 
@@ -73,39 +118,94 @@ public class GameManager : MonoBehaviour
         return _currentTurn;
     }
 
+    public void RegisterPlayerMove()
+    {
+        if (_gameOver || _currentTurn != Turn.Player)
+            return;
+
+        OnPlayerMovePlaced?.Invoke();
+        if (_tutorialPresenter != null)
+            _tutorialPresenter.OnPlayerMovePlaced();
+        ChangeTurn();
+    }
+
     public void OnCatTrapped()
     {
-        _catTrappedScreen.SetActive(true);
+        EndGame("CAT TRAPPED!");
+    }
+
+    private void OnCatEscaped()
+    {
+        EndGame("CAT ESCAPED!");
+    }
+
+    private void EndGame(string message)
+    {
+        if (_gameOver)
+            return;
+
+        _gameOver = true;
+        _currentTurn = Turn.Player;
+        Cat cat = _cat != null ? _cat.GetComponent<Cat>() : null;
+        if (cat != null)
+            cat.SetCanMove(false);
+        if (_resultLabel != null)
+            _resultLabel.text = message;
+        if (_catTrappedScreen != null)
+            _catTrappedScreen.SetActive(true);
+        OnTurnChanged?.Invoke();
     }
 
     private void PlaceCatAtCenter()
     {
-        if(_cat !=null && gridManager != null)
+        if (_gridManager == null || _cat == null)
+            return;
+
+        int x = _gridManager.width / 2;
+        int y = _gridManager.height / 2;
+        _cat.transform.position = _gridManager.GetCenterGridPosition(x, y);
+        _gridManager.SetCatPosition(x, y);
+        if (_catMovement != null)
+            _catMovement.RefreshPathfinding();
+    }
+
+    public void RestartGame()
+    {
+        if (_gridManager == null || _catMovement == null)
+            return;
+
+        _gameOver = false;
+        if (_catTrappedScreen != null)
+            _catTrappedScreen.SetActive(false);
+
+        if (_currentLevel != null && _levelLoader != null)
         {
-            Vector3 centerGridPosition = gridManager.GetCenterGridPosition();
-            _cat.transform.position = centerGridPosition; 
+            if (!_levelLoader.Load(_currentLevel))
+            {
+                _gameOver = true;
+                if (_resultLabel != null)
+                    _resultLabel.text = "LEVEL ERROR";
+                if (_catTrappedScreen != null)
+                    _catTrappedScreen.SetActive(true);
+                return;
+            }
+            if (_tutorialPresenter != null)
+                _tutorialPresenter.Begin(_currentLevel);
         }
         else
         {
-            Debug.LogError("Cat or GridManager is not assigned");
+            _catMovement.ResetMovement();
+            _gridManager.InitiateGrid();
+            PlaceCatAtCenter();
         }
-    }
 
-    private void RestartGame()
-    {
-        _catTrappedScreen.SetActive(false);
-        gridManager.DestroyGrid();
-
-        // Generate a new grid
-        gridManager.InitiateGrid();
-
-        // Place the cat at the center of the new grid
-        PlaceCatAtCenter();
-        _cat.GetComponent<CatMovement>().pathVectorList = null;
-
-        // Reset the turn to Player's turn
         _currentTurn = Turn.Player;
         OnTurnChanged?.Invoke();
     }
 
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
 }

@@ -1,220 +1,231 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using EmptyCharacter.Utils;
+
 public class GridManager : MonoBehaviour
 {
     [SerializeField] public int width, height;
-
-    [SerializeField] public float gridCellSize;
-
+    [SerializeField] public float gridCellSize = 1f;
     [SerializeField] public GameObject gridTilePrefab;
-
     [SerializeField] public GameObject originObject;
-
-    private GameObject boundaryParent;
-
-    private  GameObject fullParent;
-
-    public Grid<GridMapObject> grid;
-
-
-    [SerializeField] private List<Coordinates> _emptyTileCoordinates;
-    [SerializeField] private List<Coordinates> _fullTileCoordinates ;//blue/captured
-    [SerializeField] private List<Coordinates> _boundaryCoordinates;
-    [SerializeField] private List<Coordinates> _allCoordinates;
-    [SerializeField] private List<Coordinates> _catCoordinates;
-
-    [SerializeField] private float _fillDelay;
     [SerializeField] private bool _debugGrid;
 
+    public Grid<GridMapObject> grid;
     public float fullNumberOfGrids;
     public float totalNumberOfGrids;
     public float emptyNumberOfGrids;
 
-    public static GridManager Instance
-    {
-        get
-        {
-            if (instance == null)
-                instance = FindObjectOfType(typeof(GridManager)) as GridManager;
-            return instance;
-        }
-        set
-        {
-            instance = value;
-        }
-    }
+    private readonly List<Coordinates> _emptyTileCoordinates = new List<Coordinates>();
+    private readonly List<Coordinates> _fullTileCoordinates = new List<Coordinates>();
+    private readonly List<Coordinates> _boundaryCoordinates = new List<Coordinates>();
+    private readonly List<Coordinates> _catCoordinates = new List<Coordinates>();
 
-    private static GridManager instance;
+    public static GridManager Instance { get; private set; }
 
     private void Awake()
     {
-        _emptyTileCoordinates = new List<Coordinates>();
-        _fullTileCoordinates = new List<Coordinates>();
-        _boundaryCoordinates = new List<Coordinates>();
-        _allCoordinates = new List<Coordinates>();
+        Instance = this;
         InitiateGrid();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     public void InitiateGrid()
     {
-        _allCoordinates.Clear();
-        _emptyTileCoordinates.Clear();
+        InitiateGrid(width, height);
+    }
 
-        totalNumberOfGrids = width * height;
-        grid = new Grid<GridMapObject>(width, height, gridCellSize, originObject.transform.position, (Grid<GridMapObject> g, int x, int y) => new GridMapObject(g, x, y), _debugGrid);
+    public void InitiateGrid(int gridWidth, int gridHeight)
+    {
+        if (gridWidth < 3 || gridHeight < 3 || gridCellSize <= 0f ||
+            originObject == null || gridTilePrefab == null)
+        {
+            Debug.LogError("Grid requires dimensions of at least 3x3, a positive cell size, and assigned origin/tile references.", this);
+            return;
+        }
+
+        ClearTileObjects();
+        width = gridWidth;
+        height = gridHeight;
+        _emptyTileCoordinates.Clear();
+        _fullTileCoordinates.Clear();
+        _boundaryCoordinates.Clear();
+        _catCoordinates.Clear();
+
+        grid = new Grid<GridMapObject>(
+            width,
+            height,
+            gridCellSize,
+            originObject.transform.position,
+            (g, x, y) => new GridMapObject(g, x, y),
+            _debugGrid);
 
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                Vector3 position = grid.GetWorldPosition(x, y) + new Vector3(gridCellSize, gridCellSize) * 0.5f;
-                GameObject tile = Instantiate(gridTilePrefab, position, Quaternion.identity, transform);
-                _allCoordinates.Add(new Coordinates(x, y));
+                grid.GetGridObject(x, y).SetType(GridType.Empty);
                 _emptyTileCoordinates.Add(new Coordinates(x, y));
-                // Optional: Set up tile properties here
+
+                GameObject tile = Instantiate(
+                    gridTilePrefab,
+                    GetCenterGridPosition(x, y),
+                    Quaternion.identity,
+                    transform);
                 tile.name = $"Tile_{x}_{y}";
             }
         }
 
-        _allCoordinates = grid.AllGrids();
-        totalNumberOfGrids = grid.allGridArray.Length;
-
-        foreach(Coordinates coord in _emptyTileCoordinates)
-        {
-            SetGridAsEmpty(grid.gridArray[coord.X, coord.Y]);
-        }
-
+        totalNumberOfGrids = width * height;
         SetBoundaries();
+        UpdateCounters();
     }
 
-   
-
-    private void LateUpdate()
+    public bool SetGridAsFull(GridMapObject cell, Vector2 position)
     {
-        if (grid != null)
-        {
-            //OrganizeBlueGrids();
-        }
+        if (grid == null || cell == null)
+            return false;
+
+        grid.GetXY(position, out int x, out int y);
+        if (!IsInside(x, y) || cell.GetCellType() != GridType.Empty)
+            return false;
+
+        return SetCellType(x, y, GridType.Full);
     }
 
-
-    public void SetGridAsFull(GridMapObject gridMapObject, Vector2 position)
+    public bool SetCellType(int x, int y, GridType type)
     {
-        gridMapObject.SetType(GridType.Full);
+        if (!IsInside(x, y))
+            return false;
 
-        int x, y;
-        grid.GetXY(position, out x, out y);
-        Debug.Log(x+","+ y);
-        Coordinates coordinates = new Coordinates(x, y);
+        GridMapObject cell = grid.GetGridObject(x, y);
+        GridType previousType = cell.GetCellType();
+        if (previousType == type)
+            return true;
 
-        if (_emptyTileCoordinates.Contains(coordinates))
-        {
-            Debug.Log("Removing from empty tiles");
-            _emptyTileCoordinates.Remove(coordinates);
-            emptyNumberOfGrids--;
-        }
-        /*else if (_boundaryCoordinates.Contains(coordinates))
-        {
-            Debug.Log("Removing from boundary");
-            _boundaryCoordinates.Remove(coordinates);
-        }*/
-        else
-        {
-            Debug.Log("Coordinates not found in emptyTileCoordinates and boundaryTileCoordinates!");
-        }
+        if (previousType == GridType.Cat && type != GridType.Cat)
+            _catCoordinates.Remove(new Coordinates(x, y));
+        if (previousType == GridType.Empty)
+            _emptyTileCoordinates.Remove(new Coordinates(x, y));
+        if (previousType == GridType.Full || previousType == GridType.Obstacle)
+            _fullTileCoordinates.Remove(new Coordinates(x, y));
+        if (previousType == GridType.Boundary)
+            _boundaryCoordinates.Remove(new Coordinates(x, y));
 
-        _fullTileCoordinates.Add(coordinates);
-        fullNumberOfGrids++;
+        cell.SetType(type);
+
+        if (type == GridType.Empty && !IsBoundary(x, y))
+            _emptyTileCoordinates.Add(new Coordinates(x, y));
+        else if (type == GridType.Full || type == GridType.Obstacle)
+            _fullTileCoordinates.Add(new Coordinates(x, y));
+        else if (type == GridType.Boundary)
+            _boundaryCoordinates.Add(new Coordinates(x, y));
+        else if (type == GridType.Cat)
+            _catCoordinates.Add(new Coordinates(x, y));
+
+        UpdateCounters();
+        return true;
     }
 
-    public void SetGridAsFull(GridMapObject gridMapObject, int x, int y)
+    public void SetCatPosition(int x, int y)
     {
-        fullNumberOfGrids++;
-        gridMapObject.SetType(GridType.Full);
-    }
-
-    public void DestroyGrid()
-    {
-        if (grid != null)
+        for (int i = 0; i < _catCoordinates.Count; i++)
         {
-            ClearGridArrayObjects();
-            _emptyTileCoordinates.Clear();
-            _fullTileCoordinates.Clear();
-            _boundaryCoordinates.Clear();
-            _allCoordinates.Clear();
+            Coordinates previous = _catCoordinates[i];
+            SetCellType(previous.X, previous.Y, IsBoundary(previous.X, previous.Y)
+                ? GridType.Boundary
+                : GridType.Empty);
         }
 
+        if (!IsInside(x, y) || !grid.GetGridObject(x, y).isWalkable)
+        {
+            Debug.LogError($"Cannot place cat at blocked or out-of-bounds grid cell ({x}, {y}).", this);
+            return;
+        }
+
+        SetCellType(x, y, GridType.Cat);
     }
 
     public void SetBoundaries()
     {
-        _boundaryCoordinates.Clear();
+        if (grid == null)
+            return;
 
         for (int x = 0; x < width; x++)
         {
-            int y = 0;
-            grid.GetGridObject(x, y).SetType(GridType.Boundary);
-            grid.gridArray[x, y].SetType(GridType.Boundary);
-            _boundaryCoordinates.Add(new Coordinates(x, y)); // Track boundary coordinates
+            SetBoundaryIfEmpty(x, 0);
+            SetBoundaryIfEmpty(x, height - 1);
         }
-        for (int y = 1; y < height; y++)
+
+        for (int y = 1; y < height - 1; y++)
         {
-            int x = 0;
-            grid.GetGridObject(x, y).SetType(GridType.Boundary);
-            grid.gridArray[x, y].SetType(GridType.Boundary);
-            _boundaryCoordinates.Add(new Coordinates(x, y)); // Track boundary coordinates
+            SetBoundaryIfEmpty(0, y);
+            SetBoundaryIfEmpty(width - 1, y);
         }
-        for (int x = 1; x < width; x++)
-        {
-            int y = height - 1;
-            grid.GetGridObject(x, y).SetType(GridType.Boundary);
-            grid.gridArray[x, y].SetType(GridType.Boundary);
-            _boundaryCoordinates.Add(new Coordinates(x, y)); // Track boundary coordinates
-        }
-        for (int y = 1; y < height-1; y++)
-        {
-            int x = width - 1;
-            grid.GetGridObject(x, y).SetType(GridType.Boundary);
-            grid.gridArray[x, y].SetType(GridType.Boundary);
-            _boundaryCoordinates.Add(new Coordinates(x, y)); // Track boundary coordinates
-        }
+    }
+
+    public void DestroyGrid()
+    {
+        ClearTileObjects();
+        grid = null;
+        _emptyTileCoordinates.Clear();
+        _fullTileCoordinates.Clear();
+        _boundaryCoordinates.Clear();
+        _catCoordinates.Clear();
+        totalNumberOfGrids = 0;
+        UpdateCounters();
     }
 
     public Vector3 GetCenterGridPosition()
     {
-        int centerX = width / 2;
-        int centerY = height / 2;
-        Debug.Log(grid.GetWorldPosition(centerX, centerY));
-        Debug.Log(new Vector3(grid.GetCellSize(), grid.GetCellSize()));
-        return grid.GetWorldPosition(centerX, centerY) + new Vector3(grid.GetCellSize(), grid.GetCellSize()) * 0.5f;
+        return GetCenterGridPosition(width / 2, height / 2);
     }
 
-    public Vector3 GetCenterGridPosition(int x,int y)
+    public Vector3 GetCenterGridPosition(int x, int y)
     {
-        return grid.GetWorldPosition(x, y) + new Vector3(grid.GetCellSize(), grid.GetCellSize()) * 0.5f;
+        return grid.GetWorldPosition(x, y) +
+               new Vector3(gridCellSize * 0.5f, gridCellSize * 0.5f, 0f);
     }
 
     public List<Coordinates> GetBoundaryCoordinates()
     {
         return _boundaryCoordinates;
     }
-    private void SetGridAsEmpty(GridMapObject gridMapObject)
+
+    public bool IsInside(int x, int y)
     {
-        gridMapObject.SetType(GridType.Empty);
-        emptyNumberOfGrids++;
+        return grid != null && x >= 0 && y >= 0 && x < width && y < height;
     }
 
-    private void ClearGridArrayObjects()
+    private void SetBoundaryIfEmpty(int x, int y)
     {
-        foreach (Transform child in this.gameObject.transform)
+        if (grid.GetGridObject(x, y).GetCellType() == GridType.Empty)
+            SetCellType(x, y, GridType.Boundary);
+    }
+
+    private bool IsBoundary(int x, int y)
+    {
+        return x == 0 || y == 0 || x == width - 1 || y == height - 1;
+    }
+
+    private void UpdateCounters()
+    {
+        emptyNumberOfGrids = _emptyTileCoordinates.Count;
+        fullNumberOfGrids = _fullTileCoordinates.Count;
+    }
+
+    private void ClearTileObjects()
+    {
+        for (int i = transform.childCount - 1; i >= 0; i--)
         {
-            Destroy(child.gameObject);
+            GameObject child = transform.GetChild(i).gameObject;
+            if (Application.isPlaying)
+                Destroy(child);
+            else
+                DestroyImmediate(child);
         }
-        grid = null;
     }
 }
-
-
-
