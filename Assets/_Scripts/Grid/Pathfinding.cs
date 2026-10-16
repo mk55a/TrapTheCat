@@ -38,11 +38,11 @@ public class Pathfinding
 
     public List<Vector3> FindPath(Vector3 startWorldPosition, Vector3 endWorldPosition)
     {
-        if (_grid == null)
+        if (_grid == null ||
+            !_gridManager.TryGetGridCoordinates(startWorldPosition, out int startX, out int startY) ||
+            !_gridManager.TryGetGridCoordinates(endWorldPosition, out int endX, out int endY))
             return null;
 
-        _grid.GetXY(startWorldPosition, out int startX, out int startY);
-        _grid.GetXY(endWorldPosition, out int endX, out int endY);
         List<PathNode> path = FindPath(startX, startY, endX, endY);
         if (path == null)
             return null;
@@ -126,11 +126,15 @@ public class Pathfinding
 
     private List<PathNode> GetNeighbourList(PathNode current)
     {
-        List<PathNode> neighbours = new List<PathNode>(4);
+        List<PathNode> neighbours = new List<PathNode>(6);
+        bool oddRow = (current.y & 1) == 1;
+
         AddNeighbourIfInside(neighbours, current.x - 1, current.y);
         AddNeighbourIfInside(neighbours, current.x + 1, current.y);
-        AddNeighbourIfInside(neighbours, current.x, current.y - 1);
-        AddNeighbourIfInside(neighbours, current.x, current.y + 1);
+        AddNeighbourIfInside(neighbours, current.x + (oddRow ? 0 : -1), current.y - 1);
+        AddNeighbourIfInside(neighbours, current.x + (oddRow ? 1 : 0), current.y - 1);
+        AddNeighbourIfInside(neighbours, current.x + (oddRow ? 0 : -1), current.y + 1);
+        AddNeighbourIfInside(neighbours, current.x + (oddRow ? 1 : 0), current.y + 1);
         return neighbours;
     }
 
@@ -155,7 +159,11 @@ public class Pathfinding
 
     private int CalculateDistanceCost(PathNode a, PathNode b)
     {
-        return (Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y)) * MOVE_COST;
+        int aAxialX = a.x - (a.y - (a.y & 1)) / 2;
+        int bAxialX = b.x - (b.y - (b.y & 1)) / 2;
+        int deltaX = aAxialX - bAxialX;
+        int deltaY = a.y - b.y;
+        return (Mathf.Abs(deltaX) + Mathf.Abs(deltaY) + Mathf.Abs(deltaX + deltaY)) / 2 * MOVE_COST;
     }
 
     private PathNode GetLowestFCostNode(List<PathNode> nodes)

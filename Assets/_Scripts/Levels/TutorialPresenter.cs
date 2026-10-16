@@ -23,6 +23,12 @@ public class TutorialPresenter : MonoBehaviour
         UpdateMessage();
     }
 
+    public void Hide()
+    {
+        if (_banner != null)
+            _banner.SetActive(false);
+    }
+
     private void EnsureBanner()
     {
         if (_banner != null)

@@ -5,6 +5,8 @@ public class GridManager : MonoBehaviour
 {
     [SerializeField] public int width, height;
     [SerializeField] public float gridCellSize = 1f;
+    [SerializeField, Min(1f)] private float _tileSpacingMultiplier = 1.08f;
+    [SerializeField, Range(0f, 0.45f)] private float _cameraMargin = 0.1f;
     [SerializeField] public GameObject gridTilePrefab;
     [SerializeField] public GameObject originObject;
     [SerializeField] private bool _debugGrid;
@@ -18,8 +20,13 @@ public class GridManager : MonoBehaviour
     private readonly List<Coordinates> _fullTileCoordinates = new List<Coordinates>();
     private readonly List<Coordinates> _boundaryCoordinates = new List<Coordinates>();
     private readonly List<Coordinates> _catCoordinates = new List<Coordinates>();
-
+    private GridTile[,] _tileObjects;
     public static GridManager Instance { get; private set; }
+
+    private float HexRadius
+    {
+        get { return gridCellSize * 2f / 3f; }
+    }
 
     private void Awake()
     {
@@ -41,6 +48,7 @@ public class GridManager : MonoBehaviour
     public void InitiateGrid(int gridWidth, int gridHeight)
     {
         if (gridWidth < 3 || gridHeight < 3 || gridCellSize <= 0f ||
+            _tileSpacingMultiplier < 1f ||
             originObject == null || gridTilePrefab == null)
         {
             Debug.LogError("Grid requires dimensions of at least 3x3, a positive cell size, and assigned origin/tile references.", this);
@@ -50,10 +58,12 @@ public class GridManager : MonoBehaviour
         ClearTileObjects();
         width = gridWidth;
         height = gridHeight;
+        CenterGridOnCamera();
         _emptyTileCoordinates.Clear();
         _fullTileCoordinates.Clear();
         _boundaryCoordinates.Clear();
         _catCoordinates.Clear();
+        _tileObjects = new GridTile[width, height];
 
         grid = new Grid<GridMapObject>(
             width,
@@ -76,6 +86,12 @@ public class GridManager : MonoBehaviour
                     Quaternion.identity,
                     transform);
                 tile.name = $"Tile_{x}_{y}";
+                GridTile gridTile = tile.GetComponent<GridTile>();
+                if (gridTile != null)
+                {
+                    _tileObjects[x, y] = gridTile;
+                    gridTile.Initialize(grid.GetGridObject(x, y), HexRadius);
+                }
             }
         }
 
@@ -89,11 +105,29 @@ public class GridManager : MonoBehaviour
         if (grid == null || cell == null)
             return false;
 
-        grid.GetXY(position, out int x, out int y);
-        if (!IsInside(x, y) || cell.GetCellType() != GridType.Empty)
+        if (!TryGetGridCoordinates(position, out int x, out int y))
+            return false;
+        if (!CanPlaceBlockAt(position) || grid.GetGridObject(x, y) != cell)
             return false;
 
         return SetCellType(x, y, GridType.Full);
+    }
+
+    public bool CanPlaceBlockAt(Vector3 position)
+    {
+        if (!TryGetGridCoordinates(position, out int x, out int y))
+            return false;
+
+        GridType type = grid.GetGridObject(x, y).GetCellType();
+        return type == GridType.Empty || type == GridType.Boundary;
+    }
+
+    public GridTile GetTileAt(int x, int y)
+    {
+        if (!IsInside(x, y) || _tileObjects == null)
+            return null;
+
+        return _tileObjects[x, y];
     }
 
     public bool SetCellType(int x, int y, GridType type)
@@ -175,6 +209,7 @@ public class GridManager : MonoBehaviour
         _fullTileCoordinates.Clear();
         _boundaryCoordinates.Clear();
         _catCoordinates.Clear();
+        _tileObjects = null;
         totalNumberOfGrids = 0;
         UpdateCounters();
     }
@@ -186,8 +221,67 @@ public class GridManager : MonoBehaviour
 
     public Vector3 GetCenterGridPosition(int x, int y)
     {
-        return grid.GetWorldPosition(x, y) +
-               new Vector3(gridCellSize * 0.5f, gridCellSize * 0.5f, 0f);
+        float radius = HexRadius;
+        float columnSpacing = Mathf.Sqrt(3f) * radius;
+        float rowOffset = (y & 1) == 1 ? columnSpacing * 0.5f : 0f;
+        Vector3 origin = originObject.transform.position;
+        return new Vector3(
+            origin.x + radius + x * columnSpacing * _tileSpacingMultiplier + rowOffset * _tileSpacingMultiplier,
+            origin.y + radius + y * gridCellSize * _tileSpacingMultiplier,
+            origin.z);
+    }
+
+    public bool TryGetGridCoordinates(Vector3 worldPosition, out int x, out int y)
+    {
+        x = 0;
+        y = 0;
+        if (grid == null)
+            return false;
+
+        float radius = HexRadius;
+        float columnSpacing = Mathf.Sqrt(3f) * radius;
+        Vector3 origin = originObject.transform.position;
+        float rowSpacing = gridCellSize * _tileSpacingMultiplier;
+        int approximateRow = Mathf.RoundToInt((worldPosition.y - origin.y - radius) / rowSpacing);
+        float closestDistance = float.MaxValue;
+        bool found = false;
+
+        for (int candidateY = approximateRow - 1; candidateY <= approximateRow + 1; candidateY++)
+        {
+            float rowOffset = (candidateY & 1) == 1
+                ? columnSpacing * 0.5f * _tileSpacingMultiplier
+                : 0f;
+            int approximateColumn = Mathf.RoundToInt(
+                (worldPosition.x - origin.x - radius - rowOffset) /
+                (columnSpacing * _tileSpacingMultiplier));
+
+            for (int candidateX = approximateColumn - 1; candidateX <= approximateColumn + 1; candidateX++)
+            {
+                if (!IsInside(candidateX, candidateY))
+                    continue;
+
+                Vector3 center = GetCenterGridPosition(candidateX, candidateY);
+                float dx = Mathf.Abs(worldPosition.x - center.x);
+                float dy = Mathf.Abs(worldPosition.y - center.y);
+                float halfWidth = columnSpacing * 0.5f;
+                bool insideHex = dx <= halfWidth &&
+                                 (dy <= radius * 0.5f ||
+                                  dx / halfWidth + 2f * dy / radius <= 2f);
+                if (!insideHex)
+                    continue;
+
+                float distance = dx * dx + dy * dy;
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    x = candidateX;
+                    y = candidateY;
+                    found = true;
+                }
+            }
+        }
+
+        return found;
     }
 
     public List<Coordinates> GetBoundaryCoordinates()
@@ -209,6 +303,47 @@ public class GridManager : MonoBehaviour
     private bool IsBoundary(int x, int y)
     {
         return x == 0 || y == 0 || x == width - 1 || y == height - 1;
+    }
+
+    private void CenterGridOnCamera()
+    {
+        Camera mainCamera = Camera.main;
+        if (mainCamera == null)
+        {
+            Debug.LogWarning("GridManager could not find the Main Camera; keeping the configured grid origin.", this);
+            return;
+        }
+
+        Vector3 cameraForward = mainCamera.transform.forward;
+        if (Mathf.Abs(cameraForward.z) < 0.0001f)
+        {
+            Debug.LogWarning("Main Camera does not face the grid plane; keeping the configured grid origin.", mainCamera);
+            return;
+        }
+
+        float radius = HexRadius;
+        float columnSpacing = Mathf.Sqrt(3f) * radius;
+        float horizontalSpacing = columnSpacing * _tileSpacingMultiplier;
+        float verticalSpacing = gridCellSize * _tileSpacingMultiplier;
+        float rightmostRowOffset = height > 1 ? horizontalSpacing * 0.5f : 0f;
+        float gridCenterX = radius + ((width - 1) * horizontalSpacing + rightmostRowOffset) * 0.5f;
+        float gridCenterY = radius + (height - 1) * verticalSpacing * 0.5f;
+        float boardWidth = (width - 1) * horizontalSpacing + rightmostRowOffset + 2f * radius;
+        float boardHeight = (height - 1) * verticalSpacing + 2f * radius;
+        float visibleFraction = 1f - 2f * _cameraMargin;
+        float safeAspect = Mathf.Max(0.01f, mainCamera.aspect);
+        mainCamera.orthographicSize = Mathf.Max(
+            boardHeight / (2f * visibleFraction),
+            boardWidth / (2f * safeAspect * visibleFraction));
+
+        Vector3 currentOrigin = originObject.transform.position;
+        float cameraDepth = (currentOrigin.z - mainCamera.transform.position.z) / cameraForward.z;
+        Vector3 screenCenter = mainCamera.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, cameraDepth));
+
+        originObject.transform.position = new Vector3(
+            screenCenter.x - gridCenterX,
+            screenCenter.y - gridCenterY,
+            currentOrigin.z);
     }
 
     private void UpdateCounters()

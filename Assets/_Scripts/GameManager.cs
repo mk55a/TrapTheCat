@@ -22,6 +22,7 @@ public class GameManager : MonoBehaviour
     private LevelLoader _levelLoader;
     private TutorialPresenter _tutorialPresenter;
     private TMP_Text _resultLabel;
+    private GameSaveData _saveData;
     private bool _gameOver;
 
     public bool IsGameOver
@@ -80,6 +81,8 @@ public class GameManager : MonoBehaviour
             _tutorialPresenter = gameObject.AddComponent<TutorialPresenter>();
 
         _levelLoader = new LevelLoader(_gridManager, _cat.transform, _catMovement);
+        _saveData = GameSaveSystem.Load();
+        bool isFirstPlay = _saveData.playCount == 0 && !_saveData.hasSeenTutorial;
         _currentLevel = _startingLevel != null
             ? _startingLevel
             : Resources.Load<LevelDefinition>("Levels/FTUE");
@@ -92,15 +95,20 @@ public class GameManager : MonoBehaviour
                 PlaceCatAtCenter();
                 return;
             }
-            _tutorialPresenter.Begin(_currentLevel);
+            if (isFirstPlay)
+                _tutorialPresenter.Begin(_currentLevel);
+            else
+                _tutorialPresenter.Hide();
         }
         else
         {
             PlaceCatAtCenter();
+            _tutorialPresenter.Hide();
         }
 
         _gameOver = false;
         _currentTurn = Turn.Player;
+        RecordPlay();
         OnTurnChanged?.Invoke();
     }
 
@@ -190,7 +198,7 @@ public class GameManager : MonoBehaviour
                 return;
             }
             if (_tutorialPresenter != null)
-                _tutorialPresenter.Begin(_currentLevel);
+                _tutorialPresenter.Hide();
         }
         else
         {
@@ -200,7 +208,18 @@ public class GameManager : MonoBehaviour
         }
 
         _currentTurn = Turn.Player;
+        RecordPlay();
         OnTurnChanged?.Invoke();
+    }
+
+    private void RecordPlay()
+    {
+        if (_saveData == null)
+            _saveData = GameSaveSystem.Load();
+
+        _saveData.playCount++;
+        _saveData.hasSeenTutorial = true;
+        GameSaveSystem.Save(_saveData);
     }
 
     private void OnDestroy()

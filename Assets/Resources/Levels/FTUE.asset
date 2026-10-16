@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   levelId: ftue-01
   displayName: First Steps
-  width: 16
+  width: 10
   height: 10
-  catStart: {x: 8, y: 5}
+  catStart: {x: 5, y: 5}
   blockedCells: []
   tutorialSteps:
   - afterPlayerMoves: 0
     message: Tap an empty tile to place a block. Stop the cat from reaching the edge!
   - afterPlayerMoves: 1
-    message: The cat moves one tile after each block. Think ahead and cut off its escape routes.
+    message: The cat moves one tile after each block. Think ahead and cut off its
+      escape routes.
   - afterPlayerMoves: 3
     message: Keep surrounding the cat until every path to the edge is blocked.
