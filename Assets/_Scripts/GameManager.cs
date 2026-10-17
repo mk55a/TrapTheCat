@@ -10,7 +10,9 @@ public class GameManager : MonoBehaviour
     public static event Action OnPlayerMovePlaced;
 
     [SerializeField] private GameObject _cat;
+    [SerializeField] private Button _homeButton;
     [SerializeField] private Button _restartButton;
+    [SerializeField] private GameFlowUI _flowUI;
     [SerializeField] private GameObject _catTrappedScreen;
     [SerializeField] private Button _catTrappedReplayButton;
     [SerializeField] private LevelDefinition _startingLevel;
@@ -21,7 +23,6 @@ public class GameManager : MonoBehaviour
     private LevelData _currentLevel;
     private LevelLoader _levelLoader;
     private TutorialPresenter _tutorialPresenter;
-    private GameFlowUI _flowUI;
     private TMP_Text _resultLabel;
     private GameSaveData _saveData;
     private bool _gameOver;
@@ -54,6 +55,8 @@ public class GameManager : MonoBehaviour
 
     private void OnEnable()
     {
+        if (_homeButton != null)
+            _homeButton.onClick.AddListener(ReturnToHome);
         if (_restartButton != null)
             _restartButton.onClick.AddListener(RestartGame);
         if (_catTrappedReplayButton != null)
@@ -64,6 +67,8 @@ public class GameManager : MonoBehaviour
 
     private void OnDisable()
     {
+        if (_homeButton != null)
+            _homeButton.onClick.RemoveListener(ReturnToHome);
         if (_restartButton != null)
             _restartButton.onClick.RemoveListener(RestartGame);
         if (_catTrappedReplayButton != null)
@@ -98,8 +103,13 @@ public class GameManager : MonoBehaviour
         _gameOver = true;
         _cat.SetActive(false);
         _tutorialPresenter.Hide();
-        _flowUI = gameObject.AddComponent<GameFlowUI>();
-        _flowUI.Initialize(this, _gridManager);
+        if (_flowUI == null)
+        {
+            Debug.LogError("GameManager requires a scene-assigned GameFlowUI component.", this);
+            return;
+        }
+        if (!_flowUI.Initialize(this, _gridManager))
+            return;
         if (!string.IsNullOrWhiteSpace(selectedLevelId))
             StartLevelById(selectedLevelId);
     }
