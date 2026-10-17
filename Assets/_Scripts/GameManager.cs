@@ -18,16 +18,28 @@ public class GameManager : MonoBehaviour
     private Turn _currentTurn;
     private GridManager _gridManager;
     private CatMovement _catMovement;
-    private LevelDefinition _currentLevel;
+    private LevelData _currentLevel;
     private LevelLoader _levelLoader;
     private TutorialPresenter _tutorialPresenter;
+    private GameFlowUI _flowUI;
     private TMP_Text _resultLabel;
     private GameSaveData _saveData;
     private bool _gameOver;
+    private bool _editorMode;
 
     public bool IsGameOver
     {
         get { return _gameOver; }
+    }
+
+    public GameSaveData SaveData
+    {
+        get { return _saveData; }
+    }
+
+    public bool IsEditorMode
+    {
+        get { return _editorMode; }
     }
 
     private void Awake()
@@ -82,33 +94,64 @@ public class GameManager : MonoBehaviour
 
         _levelLoader = new LevelLoader(_gridManager, _cat.transform, _catMovement);
         _saveData = GameSaveSystem.Load();
-        bool isFirstPlay = _saveData.playCount == 0 && !_saveData.hasSeenTutorial;
-        _currentLevel = _startingLevel != null
-            ? _startingLevel
-            : Resources.Load<LevelDefinition>("Levels/FTUE");
+        string selectedLevelId = LevelLaunchSelection.Consume();
+        _gameOver = true;
+        _cat.SetActive(false);
+        _tutorialPresenter.Hide();
+        _flowUI = gameObject.AddComponent<GameFlowUI>();
+        _flowUI.Initialize(this, _gridManager);
+        if (!string.IsNullOrWhiteSpace(selectedLevelId))
+            StartLevelById(selectedLevelId);
+    }
 
-        if (_currentLevel != null)
+    public void StartLevelById(string levelId)
+    {
+        LevelData level = LevelRepository.LoadById(levelId);
+        if (level == null)
         {
-            if (!_levelLoader.Load(_currentLevel))
-            {
-                _currentLevel = null;
-                PlaceCatAtCenter();
-                return;
-            }
-            if (isFirstPlay)
-                _tutorialPresenter.Begin(_currentLevel);
-            else
-                _tutorialPresenter.Hide();
-        }
-        else
-        {
-            PlaceCatAtCenter();
-            _tutorialPresenter.Hide();
+            Debug.LogError($"Could not find level '{levelId}'.");
+            if (_flowUI != null)
+                _flowUI.ShowLevels();
+            return;
         }
 
+        bool isCustom = LevelRepository.IsCustomLevel(level);
+        bool isUnlocked = _saveData != null &&
+                          _saveData.unlockedLevelIds != null &&
+                          _saveData.unlockedLevelIds.Contains(level.levelId);
+        if (!isCustom && !isUnlocked)
+        {
+            Debug.LogWarning($"Level '{level.displayName}' is still locked.");
+            if (_flowUI != null)
+                _flowUI.ShowLevels();
+            return;
+        }
+
+        if (!_levelLoader.Load(level))
+        {
+            Debug.LogError($"Could not load level '{level.displayName}'.");
+            if (_flowUI != null)
+                _flowUI.ShowLevels();
+            return;
+        }
+
+        _currentLevel = level;
+        _editorMode = false;
         _gameOver = false;
         _currentTurn = Turn.Player;
-        RecordPlay();
+        if (_catTrappedScreen != null)
+            _catTrappedScreen.SetActive(false);
+        _cat.SetActive(true);
+        bool showTutorial = _currentLevel.levelId == "ftue-01" &&
+                            !_saveData.hasSeenTutorial;
+        if (showTutorial)
+            _tutorialPresenter.Begin(_currentLevel);
+        else
+            _tutorialPresenter.Hide();
+
+        RecordPlay(showTutorial);
+        if (_flowUI != null)
+            _flowUI.ShowGameplay();
         OnTurnChanged?.Invoke();
     }
 
@@ -139,15 +182,15 @@ public class GameManager : MonoBehaviour
 
     public void OnCatTrapped()
     {
-        EndGame("CAT TRAPPED!");
+        EndGame("CAT TRAPPED!", true);
     }
 
     private void OnCatEscaped()
     {
-        EndGame("CAT ESCAPED!");
+        EndGame("CAT ESCAPED!", false);
     }
 
-    private void EndGame(string message)
+    private void EndGame(string message, bool playerWon)
     {
         if (_gameOver)
             return;
@@ -161,6 +204,8 @@ public class GameManager : MonoBehaviour
             _resultLabel.text = message;
         if (_catTrappedScreen != null)
             _catTrappedScreen.SetActive(true);
+        if (playerWon && _currentLevel != null)
+            GameProgression.RecordWin(_saveData, _currentLevel.levelId);
         OnTurnChanged?.Invoke();
     }
 
@@ -181,12 +226,18 @@ public class GameManager : MonoBehaviour
     {
         if (_gridManager == null || _catMovement == null)
             return;
+        if (_currentLevel == null)
+        {
+            if (_flowUI != null)
+                _flowUI.ShowHome();
+            return;
+        }
 
         _gameOver = false;
         if (_catTrappedScreen != null)
             _catTrappedScreen.SetActive(false);
 
-        if (_currentLevel != null && _levelLoader != null)
+        if (_levelLoader != null)
         {
             if (!_levelLoader.Load(_currentLevel))
             {
@@ -208,18 +259,67 @@ public class GameManager : MonoBehaviour
         }
 
         _currentTurn = Turn.Player;
-        RecordPlay();
+        RecordPlay(false);
         OnTurnChanged?.Invoke();
     }
 
-    private void RecordPlay()
+    private void RecordPlay(bool tutorialShown)
     {
         if (_saveData == null)
             _saveData = GameSaveSystem.Load();
 
         _saveData.playCount++;
-        _saveData.hasSeenTutorial = true;
+        if (tutorialShown)
+            _saveData.hasSeenTutorial = true;
         GameSaveSystem.Save(_saveData);
+    }
+
+    public void SetEditorMode(bool enabled)
+    {
+        _editorMode = enabled;
+        _gameOver = true;
+        if (_catMovement != null)
+            _catMovement.ResetMovement();
+        if (_catTrappedScreen != null)
+            _catTrappedScreen.SetActive(false);
+        Cat cat = _cat != null ? _cat.GetComponent<Cat>() : null;
+        if (cat != null)
+            cat.SetCanMove(false);
+        if (_cat != null)
+            _cat.SetActive(false);
+        if (_tutorialPresenter != null)
+            _tutorialPresenter.Hide();
+    }
+
+    public void SetEditorCatVisible(bool visible)
+    {
+        if (_cat != null)
+        {
+            _cat.SetActive(visible);
+            Cat cat = _cat.GetComponent<Cat>();
+            if (cat != null)
+                cat.SetCanMove(false);
+        }
+    }
+
+    public void ReturnToHome()
+    {
+        _gameOver = true;
+        _editorMode = false;
+        _currentLevel = null;
+        if (_catMovement != null)
+            _catMovement.ResetMovement();
+        if (_catTrappedScreen != null)
+            _catTrappedScreen.SetActive(false);
+        Cat cat = _cat != null ? _cat.GetComponent<Cat>() : null;
+        if (cat != null)
+            cat.SetCanMove(false);
+        if (_cat != null)
+            _cat.SetActive(false);
+        if (_tutorialPresenter != null)
+            _tutorialPresenter.Hide();
+        if (_flowUI != null)
+            _flowUI.ShowHome();
     }
 
     private void OnDestroy()

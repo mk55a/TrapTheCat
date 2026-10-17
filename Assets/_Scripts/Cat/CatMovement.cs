@@ -14,6 +14,7 @@ public class CatMovement : MonoBehaviour
     public Pathfinding pathfinding;
 
     [SerializeField] private float _speed = 2.5f;
+    [SerializeField] private CatDifficulty _difficulty = CatDifficulty.Normal;
 
     private Cat _cat;
     private GridManager _gridManager;
@@ -21,6 +22,11 @@ public class CatMovement : MonoBehaviour
     private SpriteRenderer _spriteRenderer;
     private readonly Dictionary<string, Sprite> _directionSprites = new Dictionary<string, Sprite>();
     private bool _isMoving;
+
+    public CatDifficulty Difficulty
+    {
+        get { return _difficulty; }
+    }
 
     private void Awake()
     {
@@ -65,6 +71,11 @@ public class CatMovement : MonoBehaviour
             _lineRenderer.positionCount = 0;
     }
 
+    public void SetDifficulty(CatDifficulty difficulty)
+    {
+        _difficulty = difficulty;
+    }
+
     private void TakeCatTurn()
     {
         if (_gridManager == null || _gridManager.grid == null || pathfinding == null)
@@ -101,17 +112,41 @@ public class CatMovement : MonoBehaviour
     private List<PathNode> FindClosestBoundaryPath(int catX, int catY)
     {
         List<PathNode> closestPath = null;
+        int bestCost = int.MaxValue;
+        int blockedAdjacencyPenalty = GetBlockedAdjacencyPenalty();
         foreach (Coordinates coordinate in _gridManager.GetBoundaryCoordinates())
         {
             GridMapObject cell = _gridManager.grid.GetGridObject(coordinate.X, coordinate.Y);
             if (cell == null || cell.GetCellType() != GridType.Boundary)
                 continue;
 
-            List<PathNode> path = pathfinding.FindPath(catX, catY, coordinate.X, coordinate.Y);
-            if (path != null && (closestPath == null || path.Count < closestPath.Count))
+            List<PathNode> path = pathfinding.FindPath(
+                catX,
+                catY,
+                coordinate.X,
+                coordinate.Y,
+                blockedAdjacencyPenalty);
+            int routeCost = pathfinding.CalculateRouteCost(path, blockedAdjacencyPenalty);
+            if (path != null && routeCost < bestCost)
+            {
                 closestPath = path;
+                bestCost = routeCost;
+            }
         }
         return closestPath;
+    }
+
+    private int GetBlockedAdjacencyPenalty()
+    {
+        switch (_difficulty)
+        {
+            case CatDifficulty.Normal:
+                return 4;
+            case CatDifficulty.Hard:
+                return 10;
+            default:
+                return 0;
+        }
     }
 
     private IEnumerator MoveOneCell(Vector3 destination, int destinationX, int destinationY)
@@ -125,9 +160,7 @@ public class CatMovement : MonoBehaviour
             yield return null;
         }
 
-        bool escaped = destinationX == 0 || destinationY == 0 ||
-                       destinationX == _gridManager.width - 1 ||
-                       destinationY == _gridManager.height - 1;
+        bool escaped = _gridManager.IsPerimeterCell(destinationX, destinationY);
         transform.position = destination;
         _gridManager.SetCatPosition(destinationX, destinationY);
         pathVectorList = null;

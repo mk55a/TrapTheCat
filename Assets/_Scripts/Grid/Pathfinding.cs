@@ -55,6 +55,16 @@ public class Pathfinding
 
     public List<PathNode> FindPath(int startX, int startY, int endX, int endY)
     {
+        return FindPath(startX, startY, endX, endY, 0);
+    }
+
+    public List<PathNode> FindPath(
+        int startX,
+        int startY,
+        int endX,
+        int endY,
+        int blockedAdjacencyPenalty)
+    {
         if (_grid == null || !_gridManager.IsInside(startX, startY) ||
             !_gridManager.IsInside(endX, endY))
             return null;
@@ -103,7 +113,9 @@ public class Pathfinding
                     (cell.GetCellType() == GridType.Boundary && neighbour != endNode))
                     continue;
 
-                int tentativeGCost = currentNode.gCost + MOVE_COST;
+                int tentativeGCost = currentNode.gCost + MOVE_COST +
+                                     GetBlockedNeighborCount(neighbour.x, neighbour.y) *
+                                     Mathf.Max(0, blockedAdjacencyPenalty);
                 if (tentativeGCost >= neighbour.gCost)
                     continue;
 
@@ -124,24 +136,41 @@ public class Pathfinding
         return _grid != null ? _grid.GetGridObject(x, y) : null;
     }
 
+    public int CalculateRouteCost(List<PathNode> path, int blockedAdjacencyPenalty)
+    {
+        if (path == null || path.Count == 0)
+            return int.MaxValue;
+
+        int cost = 0;
+        for (int i = 1; i < path.Count; i++)
+        {
+            PathNode node = path[i];
+            cost += MOVE_COST + GetBlockedNeighborCount(node.x, node.y) *
+                    Mathf.Max(0, blockedAdjacencyPenalty);
+        }
+        return cost;
+    }
+
     private List<PathNode> GetNeighbourList(PathNode current)
     {
-        List<PathNode> neighbours = new List<PathNode>(6);
-        bool oddRow = (current.y & 1) == 1;
-
-        AddNeighbourIfInside(neighbours, current.x - 1, current.y);
-        AddNeighbourIfInside(neighbours, current.x + 1, current.y);
-        AddNeighbourIfInside(neighbours, current.x + (oddRow ? 0 : -1), current.y - 1);
-        AddNeighbourIfInside(neighbours, current.x + (oddRow ? 1 : 0), current.y - 1);
-        AddNeighbourIfInside(neighbours, current.x + (oddRow ? 0 : -1), current.y + 1);
-        AddNeighbourIfInside(neighbours, current.x + (oddRow ? 1 : 0), current.y + 1);
+        List<Coordinates> coordinates = _gridManager.GetNeighborCoordinates(current.x, current.y);
+        List<PathNode> neighbours = new List<PathNode>(coordinates.Count);
+        foreach (Coordinates coordinate in coordinates)
+            neighbours.Add(_grid.GetGridObject(coordinate.X, coordinate.Y));
         return neighbours;
     }
 
-    private void AddNeighbourIfInside(List<PathNode> neighbours, int x, int y)
+    private int GetBlockedNeighborCount(int x, int y)
     {
-        if (_gridManager.IsInside(x, y))
-            neighbours.Add(_grid.GetGridObject(x, y));
+        int count = 0;
+        foreach (Coordinates coordinate in _gridManager.GetNeighborCoordinates(x, y))
+        {
+            GridMapObject cell = _gridManager.grid.GetGridObject(coordinate.X, coordinate.Y);
+            if (cell != null && (cell.GetCellType() == GridType.Full ||
+                                 cell.GetCellType() == GridType.Obstacle))
+                count++;
+        }
+        return count;
     }
 
     private List<PathNode> CalculatedPath(PathNode endNode)

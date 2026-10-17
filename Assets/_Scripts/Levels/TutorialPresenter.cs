@@ -4,12 +4,12 @@ using UnityEngine.UI;
 
 public class TutorialPresenter : MonoBehaviour
 {
-    private LevelDefinition _level;
+    private LevelData _level;
     private int _playerMoves;
     private TMP_Text _messageText;
     private GameObject _banner;
 
-    public void Begin(LevelDefinition level)
+    public void Begin(LevelData level)
     {
         _level = level;
         _playerMoves = 0;

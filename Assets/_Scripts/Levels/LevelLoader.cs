@@ -14,13 +14,18 @@ public class LevelLoader
         _catMovement = catMovement;
     }
 
-    public bool Load(LevelDefinition level)
+    public bool Load(LevelDefinition definition)
+    {
+        return Load(LevelData.FromDefinition(definition));
+    }
+
+    public bool Load(LevelData level)
     {
         if (!Validate(level))
             return false;
 
         _catMovement.ResetMovement();
-        _gridManager.InitiateGrid(level.width, level.height);
+        _gridManager.InitiateGrid(level.width, level.height, level.boardShape);
         if (_gridManager.grid == null)
             return false;
         foreach (Vector2Int cell in level.blockedCells)
@@ -28,11 +33,12 @@ public class LevelLoader
 
         _cat.position = _gridManager.GetCenterGridPosition(level.catStart.x, level.catStart.y);
         _gridManager.SetCatPosition(level.catStart.x, level.catStart.y);
+        _catMovement.SetDifficulty(level.catDifficulty);
         _catMovement.RefreshPathfinding();
         return true;
     }
 
-    private bool Validate(LevelDefinition level)
+    private bool Validate(LevelData level)
     {
         if (level == null)
         {
@@ -41,34 +47,12 @@ public class LevelLoader
         }
         if (_gridManager == null || _cat == null || _catMovement == null)
         {
-            Debug.LogError($"Level '{level.name}' cannot load because the grid or cat references are missing.");
+            Debug.LogError($"Level '{level.displayName}' cannot load because the grid or cat references are missing.");
             return false;
         }
-        if (level.blockedCells == null)
-        {
-            Debug.LogError($"Level '{level.name}' has no blocked-cell list.", level);
-            return false;
-        }
-        if (level.width < 3 || level.height < 3 ||
-            level.catStart.x <= 0 || level.catStart.y <= 0 ||
-            level.catStart.x >= level.width - 1 || level.catStart.y >= level.height - 1)
-        {
-            Debug.LogError($"Level '{level.name}' has invalid dimensions or a cat start outside the playable area.");
-            return false;
-        }
-
-        HashSet<Vector2Int> occupied = new HashSet<Vector2Int>();
-        foreach (Vector2Int cell in level.blockedCells)
-        {
-            bool isInside = cell.x > 0 && cell.y > 0 &&
-                            cell.x < level.width - 1 && cell.y < level.height - 1;
-            if (!isInside || cell == level.catStart || !occupied.Add(cell))
-            {
-                Debug.LogError($"Level '{level.name}' has a blocked cell that is outside the interior, duplicated, or overlaps the cat at ({cell.x}, {cell.y}).");
-                return false;
-            }
-        }
-
-        return true;
+        LevelValidationResult result = LevelValidator.Validate(level);
+        if (!result.IsValid)
+            Debug.LogError($"Level '{level.displayName}' is invalid: {result.Message}");
+        return result.IsValid;
     }
 }

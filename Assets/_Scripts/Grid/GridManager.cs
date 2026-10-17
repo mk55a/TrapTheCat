@@ -7,6 +7,7 @@ public class GridManager : MonoBehaviour
     [SerializeField] public float gridCellSize = 1f;
     [SerializeField, Min(1f)] private float _tileSpacingMultiplier = 1.08f;
     [SerializeField, Range(0f, 0.45f)] private float _cameraMargin = 0.1f;
+    [SerializeField] private BoardShape _boardShape = BoardShape.Rectangle;
     [SerializeField] public GameObject gridTilePrefab;
     [SerializeField] public GameObject originObject;
     [SerializeField] private bool _debugGrid;
@@ -21,7 +22,14 @@ public class GridManager : MonoBehaviour
     private readonly List<Coordinates> _boundaryCoordinates = new List<Coordinates>();
     private readonly List<Coordinates> _catCoordinates = new List<Coordinates>();
     private GridTile[,] _tileObjects;
+    private bool[,] _activeCells;
+    private bool[,] _perimeterCells;
     public static GridManager Instance { get; private set; }
+
+    public BoardShape Shape
+    {
+        get { return _boardShape; }
+    }
 
     private float HexRadius
     {
@@ -42,10 +50,15 @@ public class GridManager : MonoBehaviour
 
     public void InitiateGrid()
     {
-        InitiateGrid(width, height);
+        InitiateGrid(width, height, _boardShape);
     }
 
     public void InitiateGrid(int gridWidth, int gridHeight)
+    {
+        InitiateGrid(gridWidth, gridHeight, BoardShape.Rectangle);
+    }
+
+    public void InitiateGrid(int gridWidth, int gridHeight, BoardShape shape)
     {
         if (gridWidth < 3 || gridHeight < 3 || gridCellSize <= 0f ||
             _tileSpacingMultiplier < 1f ||
@@ -58,6 +71,9 @@ public class GridManager : MonoBehaviour
         ClearTileObjects();
         width = gridWidth;
         height = gridHeight;
+        _boardShape = shape;
+        _activeCells = BoardTopology.BuildMask(width, height, shape);
+        _perimeterCells = BuildPerimeterMask(width, height);
         CenterGridOnCamera();
         _emptyTileCoordinates.Clear();
         _fullTileCoordinates.Clear();
@@ -77,6 +93,9 @@ public class GridManager : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
+                if (!_activeCells[x, y])
+                    continue;
+
                 grid.GetGridObject(x, y).SetType(GridType.Empty);
                 _emptyTileCoordinates.Add(new Coordinates(x, y));
 
@@ -95,7 +114,7 @@ public class GridManager : MonoBehaviour
             }
         }
 
-        totalNumberOfGrids = width * height;
+        totalNumberOfGrids = GetActiveCoordinates().Count;
         SetBoundaries();
         UpdateCounters();
     }
@@ -188,16 +207,10 @@ public class GridManager : MonoBehaviour
         if (grid == null)
             return;
 
-        for (int x = 0; x < width; x++)
+        foreach (Coordinates coordinate in GetActiveCoordinates())
         {
-            SetBoundaryIfEmpty(x, 0);
-            SetBoundaryIfEmpty(x, height - 1);
-        }
-
-        for (int y = 1; y < height - 1; y++)
-        {
-            SetBoundaryIfEmpty(0, y);
-            SetBoundaryIfEmpty(width - 1, y);
+            if (_perimeterCells[coordinate.X, coordinate.Y])
+                SetBoundaryIfEmpty(coordinate.X, coordinate.Y);
         }
     }
 
@@ -210,6 +223,8 @@ public class GridManager : MonoBehaviour
         _boundaryCoordinates.Clear();
         _catCoordinates.Clear();
         _tileObjects = null;
+        _activeCells = null;
+        _perimeterCells = null;
         totalNumberOfGrids = 0;
         UpdateCounters();
     }
@@ -291,7 +306,46 @@ public class GridManager : MonoBehaviour
 
     public bool IsInside(int x, int y)
     {
-        return grid != null && x >= 0 && y >= 0 && x < width && y < height;
+        return IsActive(x, y);
+    }
+
+    public bool IsActive(int x, int y)
+    {
+        return _activeCells != null && x >= 0 && y >= 0 &&
+               x < width && y < height && _activeCells[x, y];
+    }
+
+    public bool IsPerimeterCell(int x, int y)
+    {
+        return IsBoundary(x, y);
+    }
+
+    public List<Coordinates> GetActiveCoordinates()
+    {
+        List<Coordinates> coordinates = new List<Coordinates>();
+        if (_activeCells == null)
+            return coordinates;
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (_activeCells[x, y])
+                    coordinates.Add(new Coordinates(x, y));
+            }
+        }
+        return coordinates;
+    }
+
+    public List<Coordinates> GetNeighborCoordinates(int x, int y)
+    {
+        List<Coordinates> neighbors = new List<Coordinates>(6);
+        if (!IsActive(x, y))
+            return neighbors;
+
+        foreach (Vector2Int neighbor in BoardTopology.GetNeighbors(_activeCells, x, y))
+            neighbors.Add(new Coordinates(neighbor.x, neighbor.y));
+        return neighbors;
     }
 
     private void SetBoundaryIfEmpty(int x, int y)
@@ -302,7 +356,22 @@ public class GridManager : MonoBehaviour
 
     private bool IsBoundary(int x, int y)
     {
-        return x == 0 || y == 0 || x == width - 1 || y == height - 1;
+        return _perimeterCells != null && x >= 0 && y >= 0 &&
+               x < width && y < height && _perimeterCells[x, y];
+    }
+
+    private bool[,] BuildPerimeterMask(int gridWidth, int gridHeight)
+    {
+        bool[,] perimeter = new bool[gridWidth, gridHeight];
+        for (int x = 0; x < gridWidth; x++)
+        {
+            for (int y = 0; y < gridHeight; y++)
+            {
+                if (_activeCells[x, y])
+                    perimeter[x, y] = BoardTopology.IsBoundary(_activeCells, x, y);
+            }
+        }
+        return perimeter;
     }
 
     private void CenterGridOnCamera()

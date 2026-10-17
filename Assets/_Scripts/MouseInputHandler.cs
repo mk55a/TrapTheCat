@@ -64,6 +64,15 @@ public class MouseInputHandler : MonoBehaviour
     private void Update()
     {
         bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+        if (GameManager.Instance != null &&
+            GameManager.Instance.IsEditorMode &&
+            GameFlowUI.Current != null &&
+            GameFlowUI.Current.IsEditingLevel)
+        {
+            HandleEditorPointer(overUI);
+            return;
+        }
+
         bool canPlace = TryGetPointerCell(out GridManager gridManager, out Vector3 worldPosition,
             out int x, out int y) &&
             !overUI &&
@@ -115,6 +124,32 @@ public class MouseInputHandler : MonoBehaviour
             if (_hoveredTile != null)
                 _hoveredTile.SetHovered(true);
         }
+    }
+
+    private void HandleEditorPointer(bool overUI)
+    {
+        GridManager gridManager = null;
+        int x = 0;
+        int y = 0;
+        bool overTile = !overUI &&
+                        TryGetPointerCell(out gridManager, out _, out x, out y) &&
+                        gridManager.IsActive(x, y) &&
+                        GameFlowUI.Current.CanEditTiles;
+
+        if (overTile && Input.GetMouseButtonDown(0))
+            GameFlowUI.Current.HandleEditorCellClick(x, y);
+
+        GridTile tileUnderPointer = overTile ? gridManager.GetTileAt(x, y) : null;
+        if (_hoveredTile != tileUnderPointer)
+        {
+            if (_hoveredTile != null)
+                _hoveredTile.SetHovered(false);
+            _hoveredTile = tileUnderPointer;
+            if (_hoveredTile != null)
+                _hoveredTile.SetHovered(true);
+        }
+
+        SetCursor(overTile ? CursorState.HandPoint : CursorState.Pointer);
     }
 
     private bool TryGetPointerCell(
