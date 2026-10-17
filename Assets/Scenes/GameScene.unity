@@ -1079,7 +1079,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.15820312, y: 0.15820312, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1888252282}
@@ -1615,6 +1615,7 @@ GameObject:
   - component: {fileID: 1888252281}
   - component: {fileID: 1888252283}
   - component: {fileID: 1888252284}
+  - component: {fileID: 1888252285}
   m_Layer: 0
   m_Name: Cat
   m_TagString: Untagged
@@ -1666,6 +1667,68 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   pathVectorList: []
   _speed: 2.5
+  _difficulty: 1
+--- !u!114 &1888252285
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1888252280}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0cc59f9da3149bf9c43282a66f6678a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _spriteRenderer: {fileID: 823751450}
+  _idleFrames:
+  - {fileID: 29325209, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
+  - {fileID: -352063176, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
+  - {fileID: 1177631573, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
+  - {fileID: 2063199748, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
+  - {fileID: -624807298, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
+  - {fileID: -722502699, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
+  - {fileID: -731346573, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
+  - {fileID: 1100012389, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
+  - {fileID: -858968663, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
+  - {fileID: -2096875981, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
+  _walkFrames:
+  - {fileID: -254169148, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
+  - {fileID: -728125083, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
+  - {fileID: 1683229, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
+  - {fileID: -1670600875, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
+  - {fileID: 1951145244, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
+  - {fileID: 100297296, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
+  - {fileID: -1505254436, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
+  - {fileID: -748725566, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
+  _runFrames:
+  - {fileID: -1689444797, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
+  - {fileID: 587833758, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
+  - {fileID: -1375625415, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
+  - {fileID: -1021212030, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
+  - {fileID: -1550280241, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
+  - {fileID: -719394768, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
+  - {fileID: -659371257, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
+  - {fileID: -1653465737, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
+  _layingFrames:
+  - {fileID: -1382115465, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
+  - {fileID: -820635256, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
+  - {fileID: -1571689326, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
+  - {fileID: -345083790, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
+  - {fileID: -1940853953, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
+  - {fileID: 1432530257, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
+  - {fileID: 1223987923, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
+  - {fileID: 1750684531, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
+  _meowFrames:
+  - {fileID: -540195419, guid: 922936d3e15297e42b9c19a8d40e7662, type: 3}
+  - {fileID: -2008888176, guid: 922936d3e15297e42b9c19a8d40e7662, type: 3}
+  - {fileID: -107870544, guid: 922936d3e15297e42b9c19a8d40e7662, type: 3}
+  - {fileID: 36880153, guid: 922936d3e15297e42b9c19a8d40e7662, type: 3}
+  _sittingFrame: {fileID: 256048711, guid: 4282a1e20e673d943a10aa8a0fdf40fc, type: 3}
+  _idleFrameRate: 6
+  _walkFrameRate: 10
+  _runFrameRate: 12
+  _reactionFrameRate: 8
 --- !u!120 &1888252284
 LineRenderer:
   serializedVersion: 2

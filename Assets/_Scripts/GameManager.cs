@@ -200,6 +200,8 @@ public class GameManager : MonoBehaviour
         Cat cat = _cat != null ? _cat.GetComponent<Cat>() : null;
         if (cat != null)
             cat.SetCanMove(false);
+        if (playerWon)
+            _cat.GetComponent<CatSpriteAnimator>()?.PlayTrappedReaction();
         if (_resultLabel != null)
             _resultLabel.text = message;
         if (_catTrappedScreen != null)

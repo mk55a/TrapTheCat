@@ -5,8 +5,6 @@ using UnityEngine;
 
 public class CatMovement : MonoBehaviour
 {
-    private static readonly string[] DirectionNames = { "E", "NE", "N", "NW", "W", "SW", "S", "SE" };
-
     public static event Action OnCatTrapped;
     public static event Action OnCatEscaped;
 
@@ -19,8 +17,7 @@ public class CatMovement : MonoBehaviour
     private Cat _cat;
     private GridManager _gridManager;
     private LineRenderer _lineRenderer;
-    private SpriteRenderer _spriteRenderer;
-    private readonly Dictionary<string, Sprite> _directionSprites = new Dictionary<string, Sprite>();
+    private CatSpriteAnimator _spriteAnimator;
     private bool _isMoving;
 
     public CatDifficulty Difficulty
@@ -33,8 +30,7 @@ public class CatMovement : MonoBehaviour
         _cat = GetComponent<Cat>();
         _gridManager = GridManager.Instance;
         _lineRenderer = GetComponent<LineRenderer>();
-        _spriteRenderer = GetComponentInChildren<SpriteRenderer>();
-        LoadDirectionalSprites();
+        _spriteAnimator = GetComponent<CatSpriteAnimator>();
         RefreshPathfinding();
     }
 
@@ -49,15 +45,6 @@ public class CatMovement : MonoBehaviour
         _gridManager = GridManager.Instance;
         if (_gridManager != null)
         {
-            LoadDirectionalSprites();
-            // Keep the cat's scale editable in the Inspector.
-            // if (_spriteRenderer != null && _spriteRenderer.sprite != null)
-            // {
-            //     float targetHeight = _gridManager.gridCellSize * 0.9f;
-            //     float spriteHeight = _spriteRenderer.sprite.bounds.size.y;
-            //     if (spriteHeight > 0f)
-            //         _spriteRenderer.transform.localScale = Vector3.one * (targetHeight / spriteHeight);
-            // }
             pathfinding = new Pathfinding(_gridManager.width, _gridManager.height);
         }
     }
@@ -67,6 +54,8 @@ public class CatMovement : MonoBehaviour
         StopAllCoroutines();
         _isMoving = false;
         pathVectorList = null;
+        if (_spriteAnimator != null)
+            _spriteAnimator.PlayIdle();
         if (_lineRenderer != null)
             _lineRenderer.positionCount = 0;
     }
@@ -101,12 +90,16 @@ public class CatMovement : MonoBehaviour
         UpdateLineRenderer();
 
         PathNode nextNode = path[1];
-        FaceDirection(_gridManager.GetCenterGridPosition(nextNode.x, nextNode.y) - transform.position);
+        Vector3 direction = _gridManager.GetCenterGridPosition(nextNode.x, nextNode.y) - transform.position;
+        _spriteAnimator?.SetFacing(direction);
+        bool escaping = _gridManager.IsPerimeterCell(nextNode.x, nextNode.y);
+        _spriteAnimator?.PlayMovement(escaping);
         _isMoving = true;
         StartCoroutine(MoveOneCell(
             _gridManager.GetCenterGridPosition(nextNode.x, nextNode.y),
             nextNode.x,
-            nextNode.y));
+            nextNode.y,
+            escaping));
     }
 
     private List<PathNode> FindClosestBoundaryPath(int catX, int catY)
@@ -149,7 +142,11 @@ public class CatMovement : MonoBehaviour
         }
     }
 
-    private IEnumerator MoveOneCell(Vector3 destination, int destinationX, int destinationY)
+    private IEnumerator MoveOneCell(
+        Vector3 destination,
+        int destinationX,
+        int destinationY,
+        bool escaping)
     {
         while (Vector3.Distance(transform.position, destination) > 0.01f)
         {
@@ -160,7 +157,6 @@ public class CatMovement : MonoBehaviour
             yield return null;
         }
 
-        bool escaped = _gridManager.IsPerimeterCell(destinationX, destinationY);
         transform.position = destination;
         _gridManager.SetCatPosition(destinationX, destinationY);
         pathVectorList = null;
@@ -169,13 +165,16 @@ public class CatMovement : MonoBehaviour
 
         _isMoving = false;
         _cat.SetCanMove(false);
-        if (escaped)
+        if (escaping)
         {
+            _spriteAnimator?.HoldCurrentFrame();
             OnCatEscaped?.Invoke();
         }
-        else if (GameManager.Instance != null)
+        else
         {
-            GameManager.Instance.ChangeTurn();
+            _spriteAnimator?.PlayIdle();
+            if (GameManager.Instance != null)
+                GameManager.Instance.ChangeTurn();
         }
     }
 
@@ -189,41 +188,4 @@ public class CatMovement : MonoBehaviour
             _lineRenderer.SetPosition(i, pathVectorList[i]);
     }
 
-    private void LoadDirectionalSprites()
-    {
-        if (_directionSprites.Count != 8)
-        {
-            Sprite[] sprites = Resources.LoadAll<Sprite>("Art/Chibi Gray Tabby Cat Sprite Sheet");
-            foreach (Sprite sprite in sprites)
-            {
-                if (sprite.name.StartsWith("Cat_Sprite_", StringComparison.Ordinal))
-                    _directionSprites[sprite.name.Substring("Cat_Sprite_".Length)] = sprite;
-            }
-        }
-
-        if (_directionSprites.Count != 8)
-        {
-            Debug.LogError(
-                "Cat sprite sheet must contain Cat_Sprite_N, NE, E, SE, S, SW, W, and NW.",
-                this);
-            return;
-        }
-
-        if (_spriteRenderer != null)
-            _spriteRenderer.sprite = _directionSprites["S"];
-    }
-
-    private void FaceDirection(Vector3 direction)
-    {
-        if (_spriteRenderer == null || direction.sqrMagnitude < 0.0001f)
-            return;
-
-        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        int directionIndex = Mathf.RoundToInt(angle / 45f);
-        string spriteDirection = DirectionNames[
-            (directionIndex % DirectionNames.Length + DirectionNames.Length) % DirectionNames.Length];
-
-        if (_directionSprites.TryGetValue(spriteDirection, out Sprite sprite))
-            _spriteRenderer.sprite = sprite;
-    }
 }
