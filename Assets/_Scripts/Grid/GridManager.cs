@@ -11,6 +11,7 @@ public class GridManager : MonoBehaviour
     [SerializeField] public GameObject gridTilePrefab;
     [SerializeField] public GameObject originObject;
     [SerializeField] private bool _debugGrid;
+    [SerializeField] private bool _initializeOnAwake = true;
 
     public Grid<GridMapObject> grid;
     public float fullNumberOfGrids;
@@ -39,7 +40,8 @@ public class GridManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-        InitiateGrid();
+        if (_initializeOnAwake)
+            InitiateGrid();
     }
 
     private void OnDestroy()

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using UnityEngine;
 
 [Serializable]
@@ -31,7 +32,7 @@ public static class GameSaveSystem
         try
         {
             string json = File.ReadAllText(SavePath);
-            GameSaveData data = JsonUtility.FromJson<GameSaveData>(json);
+            GameSaveData data = JsonConvert.DeserializeObject<GameSaveData>(json);
             if (data == null)
             {
                 Debug.LogError($"Save file '{SavePath}' does not contain valid game data.");
@@ -55,6 +56,13 @@ public static class GameSaveSystem
             Normalize(newData);
             return newData;
         }
+        catch (JsonException exception)
+        {
+            Debug.LogError($"Save file '{SavePath}' contains invalid JSON: {exception.Message}");
+            GameSaveData newData = new GameSaveData();
+            Normalize(newData);
+            return newData;
+        }
     }
 
     public static void Save(GameSaveData data)
@@ -62,7 +70,7 @@ public static class GameSaveSystem
         try
         {
             Directory.CreateDirectory(Application.persistentDataPath);
-            string json = JsonUtility.ToJson(data, true);
+            string json = JsonConvert.SerializeObject(data, Formatting.Indented);
             File.WriteAllText(SavePath, json);
         }
         catch (IOException exception)
@@ -72,6 +80,10 @@ public static class GameSaveSystem
         catch (UnauthorizedAccessException exception)
         {
             Debug.LogError($"Could not write save file '{SavePath}': {exception.Message}");
+        }
+        catch (JsonException exception)
+        {
+            Debug.LogError($"Could not serialize save file '{SavePath}': {exception.Message}");
         }
     }
 

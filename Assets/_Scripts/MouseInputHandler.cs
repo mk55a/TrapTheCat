@@ -64,8 +64,9 @@ public class MouseInputHandler : MonoBehaviour
     private void Update()
     {
         bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-        if (GameManager.Instance != null &&
-            GameManager.Instance.IsEditorMode &&
+        IGameSessionController gameSession = GameSession.Current;
+        if (gameSession != null &&
+            gameSession.IsEditorMode &&
             GameFlowUI.Current != null &&
             GameFlowUI.Current.IsEditingLevel)
         {
@@ -76,9 +77,9 @@ public class MouseInputHandler : MonoBehaviour
         bool canPlace = TryGetPointerCell(out GridManager gridManager, out Vector3 worldPosition,
             out int x, out int y) &&
             !overUI &&
-            GameManager.Instance != null &&
-            !GameManager.Instance.IsGameOver &&
-            GameManager.Instance.GetCurrentTurn() == Turn.Player &&
+            gameSession != null &&
+            !gameSession.IsGameOver &&
+            gameSession.GetCurrentTurn() == Turn.Player &&
             gridManager.CanPlaceBlockAt(worldPosition);
 
         if (Input.GetMouseButtonDown(0))
@@ -90,7 +91,7 @@ public class MouseInputHandler : MonoBehaviour
                 GridMapObject cell = gridManager.grid.GetGridObject(x, y);
                 gridManager.GetTileAt(x, y)?.PlayClickFeedback();
                 if (gridManager.SetGridAsFull(cell, worldPosition))
-                    GameManager.Instance.RegisterPlayerMove();
+                    gameSession.RegisterPlayerMove();
             }
         }
 

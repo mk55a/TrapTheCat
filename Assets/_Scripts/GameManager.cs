@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class GameManager : MonoBehaviour
+public class GameManager : MonoBehaviour, IGameSessionController
 {
     public static GameManager Instance;
     public static event Action OnTurnChanged;
@@ -52,6 +52,7 @@ public class GameManager : MonoBehaviour
             return;
         }
         Instance = this;
+        GameSession.Attach(this);
     }
 
     private void OnEnable()
@@ -164,7 +165,7 @@ public class GameManager : MonoBehaviour
         RecordPlay(showTutorial);
         if (_flowUI != null)
             _flowUI.ShowGameplay();
-        OnTurnChanged?.Invoke();
+        NotifyTurnChanged();
     }
 
     public void ChangeTurn()
@@ -173,7 +174,7 @@ public class GameManager : MonoBehaviour
             return;
 
         _currentTurn = _currentTurn == Turn.Player ? Turn.Cat : Turn.Player;
-        OnTurnChanged?.Invoke();
+        NotifyTurnChanged();
     }
 
     public Turn GetCurrentTurn()
@@ -217,7 +218,7 @@ public class GameManager : MonoBehaviour
         ShowLevelEndScreen(message, playerWon);
         if (playerWon && _currentLevel != null)
             GameProgression.RecordWin(_saveData, _currentLevel.levelId);
-        OnTurnChanged?.Invoke();
+        NotifyTurnChanged();
     }
 
     private void ShowLevelEndScreen(string message, bool showContinue)
@@ -280,7 +281,13 @@ public class GameManager : MonoBehaviour
 
         _currentTurn = Turn.Player;
         RecordPlay(false);
+        NotifyTurnChanged();
+    }
+
+    private static void NotifyTurnChanged()
+    {
         OnTurnChanged?.Invoke();
+        GameSession.NotifyTurnChanged();
     }
 
     public void ContinueToLevels()
@@ -355,6 +362,7 @@ public class GameManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        GameSession.Detach(this);
         if (Instance == this)
             Instance = null;
     }

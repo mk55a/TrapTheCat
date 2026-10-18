@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json;
 using UnityEngine;
 
 public static class LevelRepository
@@ -159,7 +160,7 @@ public static class LevelRepository
                 catalog.levels.Add(LevelJsonData.FromLevel(entry));
 
             Directory.CreateDirectory(Path.GetDirectoryName(catalogPath));
-            WriteCatalogAtomically(catalogPath, JsonUtility.ToJson(catalog, true));
+            WriteCatalogAtomically(catalogPath, JsonConvert.SerializeObject(catalog, Formatting.Indented));
 #if UNITY_EDITOR
             UnityEditor.AssetDatabase.Refresh();
 #endif
@@ -181,6 +182,11 @@ public static class LevelRepository
             error = $"The catalog was saved, but Unity could not refresh its asset database: {exception.Message}";
             return false;
         }
+        catch (JsonException exception)
+        {
+            error = $"Could not serialize the level catalog: {exception.Message}";
+            return false;
+        }
     }
 
     public static bool ClearCustomLevels(out string error)
@@ -197,7 +203,7 @@ public static class LevelRepository
             {
                 suppressBundledCustomLevels = true
             };
-            string catalogJson = JsonUtility.ToJson(emptyCatalog, true);
+            string catalogJson = JsonConvert.SerializeObject(emptyCatalog, Formatting.Indented);
 #if UNITY_EDITOR
             Directory.CreateDirectory(Path.GetDirectoryName(ProjectCatalogPath));
             WriteCatalogAtomically(ProjectCatalogPath, catalogJson);
@@ -221,6 +227,11 @@ public static class LevelRepository
         catch (UnityException exception)
         {
             error = $"Custom levels were cleared, but Unity could not refresh its asset database: {exception.Message}";
+            return false;
+        }
+        catch (JsonException exception)
+        {
+            error = $"Could not serialize the cleared level catalog: {exception.Message}";
             return false;
         }
     }
@@ -298,7 +309,7 @@ public static class LevelRepository
 
         try
         {
-            LevelCatalogData catalog = JsonUtility.FromJson<LevelCatalogData>(json);
+            LevelCatalogData catalog = JsonConvert.DeserializeObject<LevelCatalogData>(json);
             if (catalog == null || catalog.formatVersion != 1 || catalog.levels == null)
             {
                 Debug.LogError($"Level catalog '{source}' has an unsupported or invalid format.");
@@ -326,6 +337,10 @@ public static class LevelRepository
         {
             Debug.LogError($"Could not parse level catalog '{source}': {exception.Message}");
         }
+        catch (JsonException exception)
+        {
+            Debug.LogError($"Could not parse level catalog '{source}': {exception.Message}");
+        }
     }
 
     private static void LoadLegacyDirectory(
@@ -344,7 +359,7 @@ public static class LevelRepository
                 try
                 {
                     LevelJsonData serializedLevel =
-                        JsonUtility.FromJson<LevelJsonData>(File.ReadAllText(file));
+                        JsonConvert.DeserializeObject<LevelJsonData>(File.ReadAllText(file));
                     if (serializedLevel == null)
                     {
                         Debug.LogError($"Legacy level file '{file}' contains no level data.");
@@ -362,6 +377,10 @@ public static class LevelRepository
                     AddLevel(levelsById, level, file);
                 }
                 catch (ArgumentException exception)
+                {
+                    Debug.LogError($"Could not parse legacy level '{file}': {exception.Message}");
+                }
+                catch (JsonException exception)
                 {
                     Debug.LogError($"Could not parse legacy level '{file}': {exception.Message}");
                 }

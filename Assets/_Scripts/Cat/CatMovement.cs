@@ -173,8 +173,8 @@ public class CatMovement : MonoBehaviour
         else
         {
             _spriteAnimator?.PlayIdle();
-            if (GameManager.Instance != null)
-                GameManager.Instance.ChangeTurn();
+            if (GameSession.Current != null)
+                GameSession.Current.ChangeTurn();
         }
     }
 

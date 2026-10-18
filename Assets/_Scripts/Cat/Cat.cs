@@ -17,12 +17,12 @@ public class Cat : MonoBehaviour
 
     private void OnEnable()
     {
-        GameManager.OnTurnChanged += HandleTurnChanged;
+        GameSession.TurnChanged += HandleTurnChanged;
     }
 
     private void OnDisable()
     {
-        GameManager.OnTurnChanged -= HandleTurnChanged;
+        GameSession.TurnChanged -= HandleTurnChanged;
     }
 
     private void OnDestroy()
@@ -38,7 +38,7 @@ public class Cat : MonoBehaviour
 
     private void HandleTurnChanged()
     {
-        canMove = GameManager.Instance != null &&
-                  GameManager.Instance.GetCurrentTurn() == Turn.Cat;
+        canMove = GameSession.Current != null &&
+                  GameSession.Current.GetCurrentTurn() == Turn.Cat;
     }
 }

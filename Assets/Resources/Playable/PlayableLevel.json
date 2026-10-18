@@ -1,0 +1,10 @@
+{
+  "formatVersion": 1,
+  "width": 10,
+  "height": 10,
+  "boardShape": "Hexagon",
+  "catStartX": 4,
+  "catStartY": 5,
+  "catDifficulty": "Normal",
+  "blockedCells": []
+}
