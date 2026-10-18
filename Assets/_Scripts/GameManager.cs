@@ -13,8 +13,10 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Button _homeButton;
     [SerializeField] private Button _restartButton;
     [SerializeField] private GameFlowUI _flowUI;
-    [SerializeField] private GameObject _catTrappedScreen;
-    [SerializeField] private Button _catTrappedReplayButton;
+    [SerializeField] private GameObject _levelEndPanel;
+    [SerializeField] private TMP_Text _levelEndText;
+    [SerializeField] private Button _levelEndRetryButton;
+    [SerializeField] private Button _levelEndContinueButton;
     [SerializeField] private LevelDefinition _startingLevel;
 
     private Turn _currentTurn;
@@ -23,7 +25,6 @@ public class GameManager : MonoBehaviour
     private LevelData _currentLevel;
     private LevelLoader _levelLoader;
     private TutorialPresenter _tutorialPresenter;
-    private TMP_Text _resultLabel;
     private GameSaveData _saveData;
     private bool _gameOver;
     private bool _editorMode;
@@ -59,8 +60,10 @@ public class GameManager : MonoBehaviour
             _homeButton.onClick.AddListener(ReturnToHome);
         if (_restartButton != null)
             _restartButton.onClick.AddListener(RestartGame);
-        if (_catTrappedReplayButton != null)
-            _catTrappedReplayButton.onClick.AddListener(RestartGame);
+        if (_levelEndRetryButton != null)
+            _levelEndRetryButton.onClick.AddListener(RestartGame);
+        if (_levelEndContinueButton != null)
+            _levelEndContinueButton.onClick.AddListener(ContinueToLevels);
         CatMovement.OnCatTrapped += OnCatTrapped;
         CatMovement.OnCatEscaped += OnCatEscaped;
     }
@@ -71,8 +74,10 @@ public class GameManager : MonoBehaviour
             _homeButton.onClick.RemoveListener(ReturnToHome);
         if (_restartButton != null)
             _restartButton.onClick.RemoveListener(RestartGame);
-        if (_catTrappedReplayButton != null)
-            _catTrappedReplayButton.onClick.RemoveListener(RestartGame);
+        if (_levelEndRetryButton != null)
+            _levelEndRetryButton.onClick.RemoveListener(RestartGame);
+        if (_levelEndContinueButton != null)
+            _levelEndContinueButton.onClick.RemoveListener(ContinueToLevels);
         CatMovement.OnCatTrapped -= OnCatTrapped;
         CatMovement.OnCatEscaped -= OnCatEscaped;
     }
@@ -81,11 +86,8 @@ public class GameManager : MonoBehaviour
     {
         _gridManager = GridManager.Instance;
         _catMovement = _cat != null ? _cat.GetComponent<CatMovement>() : null;
-        _resultLabel = _catTrappedScreen != null
-            ? _catTrappedScreen.GetComponentInChildren<TMP_Text>(true)
-            : null;
-        if (_catTrappedScreen != null)
-            _catTrappedScreen.SetActive(false);
+        if (_levelEndPanel != null)
+            _levelEndPanel.SetActive(false);
 
         if (_gridManager == null || _cat == null || _catMovement == null)
         {
@@ -149,8 +151,8 @@ public class GameManager : MonoBehaviour
         _editorMode = false;
         _gameOver = false;
         _currentTurn = Turn.Player;
-        if (_catTrappedScreen != null)
-            _catTrappedScreen.SetActive(false);
+        if (_levelEndPanel != null)
+            _levelEndPanel.SetActive(false);
         _cat.SetActive(true);
         bool showTutorial = _currentLevel.levelId == "ftue-01" &&
                             !_saveData.hasSeenTutorial;
@@ -192,12 +194,12 @@ public class GameManager : MonoBehaviour
 
     public void OnCatTrapped()
     {
-        EndGame("CAT TRAPPED!", true);
+        EndGame("TRAPPED", true);
     }
 
     private void OnCatEscaped()
     {
-        EndGame("CAT ESCAPED!", false);
+        EndGame("CAT ESCAPED", false);
     }
 
     private void EndGame(string message, bool playerWon)
@@ -212,13 +214,22 @@ public class GameManager : MonoBehaviour
             cat.SetCanMove(false);
         if (playerWon)
             _cat.GetComponent<CatSpriteAnimator>()?.PlayTrappedReaction();
-        if (_resultLabel != null)
-            _resultLabel.text = message;
-        if (_catTrappedScreen != null)
-            _catTrappedScreen.SetActive(true);
+        ShowLevelEndScreen(message, playerWon);
         if (playerWon && _currentLevel != null)
             GameProgression.RecordWin(_saveData, _currentLevel.levelId);
         OnTurnChanged?.Invoke();
+    }
+
+    private void ShowLevelEndScreen(string message, bool showContinue)
+    {
+        if (_levelEndText != null)
+            _levelEndText.text = message;
+        if (_levelEndRetryButton != null)
+            _levelEndRetryButton.gameObject.SetActive(!showContinue);
+        if (_levelEndContinueButton != null)
+            _levelEndContinueButton.gameObject.SetActive(showContinue);
+        if (_levelEndPanel != null)
+            _levelEndPanel.SetActive(true);
     }
 
     private void PlaceCatAtCenter()
@@ -246,18 +257,15 @@ public class GameManager : MonoBehaviour
         }
 
         _gameOver = false;
-        if (_catTrappedScreen != null)
-            _catTrappedScreen.SetActive(false);
+        if (_levelEndPanel != null)
+            _levelEndPanel.SetActive(false);
 
         if (_levelLoader != null)
         {
             if (!_levelLoader.Load(_currentLevel))
             {
                 _gameOver = true;
-                if (_resultLabel != null)
-                    _resultLabel.text = "LEVEL ERROR";
-                if (_catTrappedScreen != null)
-                    _catTrappedScreen.SetActive(true);
+                ShowLevelEndScreen("LEVEL ERROR", false);
                 return;
             }
             if (_tutorialPresenter != null)
@@ -273,6 +281,17 @@ public class GameManager : MonoBehaviour
         _currentTurn = Turn.Player;
         RecordPlay(false);
         OnTurnChanged?.Invoke();
+    }
+
+    public void ContinueToLevels()
+    {
+        _gameOver = true;
+        _editorMode = false;
+        _currentLevel = null;
+        if (_levelEndPanel != null)
+            _levelEndPanel.SetActive(false);
+        if (_flowUI != null)
+            _flowUI.ShowLevels();
     }
 
     private void RecordPlay(bool tutorialShown)
@@ -292,8 +311,8 @@ public class GameManager : MonoBehaviour
         _gameOver = true;
         if (_catMovement != null)
             _catMovement.ResetMovement();
-        if (_catTrappedScreen != null)
-            _catTrappedScreen.SetActive(false);
+        if (_levelEndPanel != null)
+            _levelEndPanel.SetActive(false);
         Cat cat = _cat != null ? _cat.GetComponent<Cat>() : null;
         if (cat != null)
             cat.SetCanMove(false);
@@ -321,8 +340,8 @@ public class GameManager : MonoBehaviour
         _currentLevel = null;
         if (_catMovement != null)
             _catMovement.ResetMovement();
-        if (_catTrappedScreen != null)
-            _catTrappedScreen.SetActive(false);
+        if (_levelEndPanel != null)
+            _levelEndPanel.SetActive(false);
         Cat cat = _cat != null ? _cat.GetComponent<Cat>() : null;
         if (cat != null)
             cat.SetCanMove(false);
