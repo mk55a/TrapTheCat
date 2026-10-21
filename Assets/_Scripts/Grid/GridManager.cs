@@ -119,6 +119,17 @@ public class GridManager : MonoBehaviour
         UpdateCounters();
     }
 
+    public CatBoard CreateCatBoard()
+    {
+        if (grid == null || _activeCells == null)
+            return null;
+
+        List<Vector2Int> blocked = new List<Vector2Int>(_fullTileCoordinates.Count);
+        foreach (Coordinates coordinate in _fullTileCoordinates)
+            blocked.Add(new Vector2Int(coordinate.X, coordinate.Y));
+        return new CatBoard(_activeCells, blocked);
+    }
+
     public bool SetGridAsFull(GridMapObject cell, Vector2 position)
     {
         if (grid == null || cell == null)

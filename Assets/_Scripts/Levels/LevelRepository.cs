@@ -134,7 +134,7 @@ public static class LevelRepository
         level.displayName = $"Level {level.customLevelNumber}";
         level.progressionOrder = 1000 + level.customLevelNumber;
 
-        LevelValidationResult validation = LevelValidator.Validate(level);
+        LevelValidationResult validation = LevelValidator.ValidateWinnable(level);
         if (!validation.IsValid)
         {
             error = validation.Message;

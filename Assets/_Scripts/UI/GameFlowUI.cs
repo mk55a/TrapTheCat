@@ -42,6 +42,11 @@ public class GameFlowUI : MonoBehaviour
     [SerializeField] private Button _setupCatButton;
     [SerializeField] private Button _changeDifficultyButton;
     [SerializeField] private Button _saveLevelButton;
+    [SerializeField] private Button _validateButton;
+    [SerializeField] private Button _generateButton;
+    [SerializeField] private Button _clearButton;
+    [SerializeField] private Button _undoButton;
+    [SerializeField] private TMP_Text _statusLabel;
     [SerializeField] private TMP_InputField _levelNumberInput;
     [SerializeField] private Slider _sizeSlider;
     [SerializeField] private TMP_Text _shapeLabel;
@@ -70,6 +75,20 @@ public class GameFlowUI : MonoBehaviour
     private EditorTool _editorTool;
     private bool _boardLocked;
     private bool _isEditing;
+    private GameObject _ringRoot;
+    private Image _ringFill;
+    private bool _draftValidated;
+    private bool _busy;
+    private Coroutine _job;
+    private readonly Stack<EditAction> _history = new Stack<EditAction>();
+
+    private struct EditAction
+    {
+        public bool IsCat;
+        public Vector2Int Cell;
+        public bool HadCat;
+        public Vector2Int PreviousCat;
+    }
 
     public bool IsEditingLevel
     {
@@ -162,6 +181,8 @@ public class GameFlowUI : MonoBehaviour
             tutorialSteps = new List<TutorialStep>()
         };
         _levelNumberInput.text = string.Empty;
+        CancelJob();
+        _history.Clear();
         _sizeSlider.SetValueWithoutNotify(_selectedSize);
         RefreshEditorBoard();
         _homePanel.SetActive(false);
@@ -181,11 +202,18 @@ public class GameFlowUI : MonoBehaviour
 
         _gridManager.GetTileAt(x, y)?.PlayClickFeedback();
         Vector2Int coordinate = new Vector2Int(x, y);
+        EditAction action = new EditAction
+        {
+            Cell = coordinate,
+            HadCat = _draft.hasCatStart,
+            PreviousCat = _draft.catStart
+        };
         if (_editorTool == EditorTool.Cat)
         {
             if (_gridManager.IsPerimeterCell(x, y) || _draftBlocks.Contains(coordinate))
                 return;
 
+            action.IsCat = true;
             _draft.hasCatStart = true;
             _draft.catStart = coordinate;
         }
@@ -196,6 +224,27 @@ public class GameFlowUI : MonoBehaviour
 
             if (!_draftBlocks.Add(coordinate))
                 _draftBlocks.Remove(coordinate);
+        }
+
+        _history.Push(action);
+        _draft.blockedCells = new List<Vector2Int>(_draftBlocks);
+        RefreshEditorBoard();
+    }
+
+    private void UndoEdit()
+    {
+        if (_busy || _history.Count == 0)
+            return;
+
+        EditAction action = _history.Pop();
+        if (action.IsCat)
+        {
+            _draft.hasCatStart = action.HadCat;
+            _draft.catStart = action.PreviousCat;
+        }
+        else if (!_draftBlocks.Add(action.Cell))
+        {
+            _draftBlocks.Remove(action.Cell);
         }
 
         _draft.blockedCells = new List<Vector2Int>(_draftBlocks);
@@ -238,6 +287,8 @@ public class GameFlowUI : MonoBehaviour
         BindButton(_setupCatButton, () => SetEditorTool(EditorTool.Cat), nameof(_setupCatButton));
         BindButton(_changeDifficultyButton, CycleDifficulty, nameof(_changeDifficultyButton));
         BindButton(_saveLevelButton, SaveDraft, nameof(_saveLevelButton));
+        BindEditorControls();
+        BindButton(_undoButton, UndoEdit, nameof(_undoButton));
 
         BindButton(_cancelUnlockButton, CancelUnlock, nameof(_cancelUnlockButton));
         BindButton(_confirmUnlockButton, ConfirmUnlock, nameof(_confirmUnlockButton));
@@ -301,18 +352,333 @@ public class GameFlowUI : MonoBehaviour
 
     private void OnSizeChanged(float value)
     {
-        if (_boardLocked)
+        if (_boardLocked || _busy)
             return;
 
         _selectedSize = Mathf.RoundToInt(value);
+        ResetLayout();
         RefreshEditorBoard();
         UpdateEditorLabels();
     }
 
     private void ReturnToHomeFromEditor()
     {
+        CancelJob();
         _isEditing = false;
         _gameManager.ReturnToHome();
+    }
+
+    private void BindEditorControls()
+    {
+        CreateLoadingRing();
+        BindButton(_validateButton, ValidateDraft, nameof(_validateButton));
+        BindButton(_generateButton, GenerateLevel, nameof(_generateButton));
+        BindButton(_clearButton, ClearDraft, nameof(_clearButton));
+        if (_statusLabel == null)
+            Debug.LogError("Assign the _statusLabel TMP_Text reference.", this);
+        else
+            _statusLabel.text = string.Empty;
+    }
+
+    private void CreateLoadingRing()
+    {
+        const int size = 128;
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        texture.wrapMode = TextureWrapMode.Clamp;
+        float center = (size - 1) * 0.5f;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float distance = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
+                float alpha = Mathf.Clamp01(Mathf.Min(distance - 44f, 62f - distance));
+                texture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+            }
+        }
+        texture.Apply();
+        Sprite ring = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+
+        GameObject root = new GameObject("LoadingRing", typeof(RectTransform));
+        root.transform.SetParent(_editorPanel.transform, false);
+        RectTransform rect = (RectTransform)root.transform;
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(150f, 150f);
+
+        Image track = new GameObject("Track", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+        track.transform.SetParent(rect, false);
+        track.sprite = ring;
+        track.color = new Color(1f, 1f, 1f, 0.2f);
+        track.raycastTarget = false;
+        ((RectTransform)track.transform).anchorMin = Vector2.zero;
+        ((RectTransform)track.transform).anchorMax = Vector2.one;
+        ((RectTransform)track.transform).offsetMin = ((RectTransform)track.transform).offsetMax = Vector2.zero;
+
+        _ringFill = new GameObject("Fill", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+        _ringFill.transform.SetParent(rect, false);
+        _ringFill.sprite = ring;
+        _ringFill.color = new Color(1f, 0.82f, 0.25f, 1f);
+        _ringFill.type = Image.Type.Filled;
+        _ringFill.fillMethod = Image.FillMethod.Radial360;
+        _ringFill.fillOrigin = (int)Image.Origin360.Top;
+        _ringFill.fillClockwise = true;
+        _ringFill.raycastTarget = false;
+        ((RectTransform)_ringFill.transform).anchorMin = Vector2.zero;
+        ((RectTransform)_ringFill.transform).anchorMax = Vector2.one;
+        ((RectTransform)_ringFill.transform).offsetMin = ((RectTransform)_ringFill.transform).offsetMax = Vector2.zero;
+
+        _ringRoot = root;
+        _ringRoot.SetActive(false);
+    }
+
+    private void SetProgress(float value)
+    {
+        if (_ringRoot == null)
+            return;
+
+        if (!_ringRoot.activeSelf)
+        {
+            _ringRoot.SetActive(true);
+            _ringRoot.transform.SetAsLastSibling();
+        }
+        _ringFill.fillAmount = Mathf.Clamp01(value);
+    }
+
+    private void HideProgress()
+    {
+        if (_ringRoot != null)
+            _ringRoot.SetActive(false);
+    }
+
+    private System.Collections.IEnumerator FinishProgress()
+    {
+        float start = _ringFill != null ? _ringFill.fillAmount : 0f;
+        const float seconds = 0.35f;
+        for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
+        {
+            SetProgress(Mathf.Lerp(start, 1f, t / seconds));
+            yield return null;
+        }
+        SetProgress(1f);
+        yield return new WaitForSecondsRealtime(0.15f);
+    }
+
+    private System.Collections.IEnumerator SweepProgress(float seconds)
+    {
+        for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
+        {
+            SetProgress(t / seconds);
+            yield return null;
+        }
+        SetProgress(1f);
+        yield return new WaitForSecondsRealtime(0.15f);
+    }
+
+    private void ClearDraft()
+    {
+        if (_busy)
+            return;
+
+        _job = StartCoroutine(ClearRoutine());
+    }
+
+    private System.Collections.IEnumerator ClearRoutine()
+    {
+        _busy = true;
+        RefreshEditorButtons();
+        SetStatus("Clearing...");
+        yield return SweepProgress(0.3f);
+
+        _draftBlocks.Clear();
+        _history.Clear();
+        _draft.blockedCells = new List<Vector2Int>();
+        _draft.hasCatStart = false;
+        _busy = false;
+        _job = null;
+        RefreshEditorBoard();
+        HideProgress();
+        SetStatus("Level cleared.");
+        RefreshEditorButtons();
+    }
+
+    private void SetStatus(string message)
+    {
+        if (_statusLabel != null)
+            _statusLabel.text = message;
+        else
+            Debug.Log(message, this);
+    }
+
+    private void InvalidateValidation()
+    {
+        _draftValidated = false;
+        if (!_busy)
+            SetStatus(string.Empty);
+        RefreshEditorButtons();
+    }
+
+    private void RefreshEditorButtons()
+    {
+        if (_saveLevelButton != null)
+            _saveLevelButton.interactable = _draftValidated && !_busy;
+        if (_validateButton != null)
+            _validateButton.interactable = _boardLocked && !_busy;
+        if (_generateButton != null)
+            _generateButton.interactable = !_busy;
+        if (_clearButton != null)
+            _clearButton.interactable = !_busy;
+        if (_undoButton != null)
+            _undoButton.interactable = !_busy && _history.Count > 0;
+    }
+
+    private void CancelJob()
+    {
+        if (_job != null)
+            StopCoroutine(_job);
+        _job = null;
+        _busy = false;
+        HideProgress();
+    }
+
+    private void ValidateDraft()
+    {
+        if (_busy)
+            return;
+
+        _job = StartCoroutine(ValidateRoutine());
+    }
+
+    private System.Collections.IEnumerator ValidateRoutine()
+    {
+        _busy = true;
+        RefreshEditorButtons();
+        SetStatus("Validating...");
+        yield return SweepProgress(0.4f);
+
+        _draft.blockedCells = new List<Vector2Int>(_draftBlocks);
+        LevelValidationResult result = LevelValidator.ValidateWinnable(_draft);
+        _busy = false;
+        _job = null;
+        HideProgress();
+        _draftValidated = result.IsValid;
+        SetStatus((result.IsValid ? "VALID: " : "INVALID: ") + result.Message);
+        RefreshEditorButtons();
+    }
+
+    private void GenerateLevel()
+    {
+        if (_busy)
+            return;
+
+        _job = StartCoroutine(GenerateRoutine());
+    }
+
+    // Scatters blocks around a central cat, from sparse to dense, and keeps the first layout
+    // the solver proves winnable for the selected difficulty.
+    private System.Collections.IEnumerator GenerateRoutine()
+    {
+        const int attempts = 60;
+        _busy = true;
+        RefreshEditorButtons();
+        SetStatus("Generating...");
+        SetProgress(0f);
+        yield return null;
+
+        // Start fresh on a randomly chosen shape, then lock so the layout can be edited.
+        int shapeCount = Enum.GetValues(typeof(BoardShape)).Length;
+        _selectedShape = (BoardShape)UnityEngine.Random.Range(0, shapeCount);
+        _boardLocked = false;
+        _draftBlocks.Clear();
+        _history.Clear();
+        _draft.blockedCells = new List<Vector2Int>();
+        _draft.hasCatStart = false;
+        RefreshEditorBoard();
+        _boardLocked = true;
+        UpdateEditorLabels();
+        yield return null;
+
+        List<Vector2Int> cells = new List<Vector2Int>();
+        Vector2Int cat = Vector2Int.zero;
+        float bestDistance = float.MaxValue;
+        Vector2 center = new Vector2((_draft.width - 1) * 0.5f, (_draft.height - 1) * 0.5f);
+        bool hasCat = false;
+        for (int x = 0; x < _draft.width; x++)
+        {
+            for (int y = 0; y < _draft.height; y++)
+            {
+                if (!_gridManager.IsActive(x, y))
+                    continue;
+
+                cells.Add(new Vector2Int(x, y));
+                if (_gridManager.IsPerimeterCell(x, y))
+                    continue;
+
+                float distance = (new Vector2(x, y) - center).sqrMagnitude;
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    cat = new Vector2Int(x, y);
+                    hasCat = true;
+                }
+            }
+        }
+
+        if (!hasCat)
+        {
+            _busy = false;
+            _job = null;
+            SetStatus("This board is too small to generate a level.");
+            RefreshEditorButtons();
+            yield break;
+        }
+
+        cells.Remove(cat);
+        _draft.hasCatStart = true;
+        _draft.catStart = cat;
+        for (int attempt = 0; attempt < attempts; attempt++)
+        {
+            float density = Mathf.Lerp(0.08f, 0.45f, attempt / (float)(attempts - 1));
+            int count = Mathf.RoundToInt(cells.Count * density);
+            for (int i = 0; i < count; i++)
+            {
+                int pick = UnityEngine.Random.Range(i, cells.Count);
+                Vector2Int swap = cells[i];
+                cells[i] = cells[pick];
+                cells[pick] = swap;
+            }
+
+            _draft.blockedCells = cells.GetRange(0, count);
+            LevelValidationResult result = LevelValidator.ValidateWinnable(_draft, 100000, 250);
+            if (result.IsValid)
+            {
+                yield return FinishProgress();
+                _draftBlocks = new HashSet<Vector2Int>(_draft.blockedCells);
+                RefreshEditorBoard();
+                _busy = false;
+                _job = null;
+                _draftValidated = true;
+                HideProgress();
+                SetStatus("GENERATED. " + result.Message);
+                RefreshEditorButtons();
+                yield break;
+            }
+
+            SetProgress((attempt + 1) / (float)attempts);
+            if (attempt % 3 == 2)
+            {
+                SetStatus($"Generating... ({attempt + 1}/{attempts})");
+                yield return null;
+            }
+        }
+
+        yield return FinishProgress();
+        _busy = false;
+        _job = null;
+        HideProgress();
+        _draft.blockedCells = new List<Vector2Int>(_draftBlocks);
+        _draft.hasCatStart = false;
+        RefreshEditorBoard();
+        SetStatus("Couldn't find a winnable layout. Try again or change the difficulty.");
+        RefreshEditorButtons();
     }
 
     private void PopulateLevels()
@@ -417,26 +783,30 @@ public class GameFlowUI : MonoBehaviour
 
     private void ChangeShape(int direction)
     {
-        if (_boardLocked)
+        if (_boardLocked || _busy)
             return;
 
         int count = Enum.GetValues(typeof(BoardShape)).Length;
         int current = (int)_selectedShape;
         _selectedShape = (BoardShape)((current + direction + count) % count);
+        ResetLayout();
         RefreshEditorBoard();
         UpdateEditorLabels();
     }
 
+    // A new shape or size invalidates every placed block and the cat, so they are dropped silently.
+    private void ResetLayout()
+    {
+        _draftBlocks.Clear();
+        _history.Clear();
+        _draft.blockedCells = new List<Vector2Int>();
+        _draft.hasCatStart = false;
+    }
+
     private void ToggleBoardLock()
     {
-        if (_boardLocked)
-        {
-            if (_unlockConfirmationPanel != null)
-                _unlockConfirmationPanel.SetActive(true);
-            return;
-        }
-
-        _boardLocked = true;
+        _boardLocked = !_boardLocked;
+        InvalidateValidation();
         UpdateEditorLabels();
     }
 
@@ -449,12 +819,6 @@ public class GameFlowUI : MonoBehaviour
     private void ConfirmUnlock()
     {
         CancelUnlock();
-        _boardLocked = false;
-        _draftBlocks.Clear();
-        _draft.blockedCells.Clear();
-        _draft.hasCatStart = false;
-        RefreshEditorBoard();
-        UpdateEditorLabels();
     }
 
     private void SetEditorTool(EditorTool tool)
@@ -467,6 +831,7 @@ public class GameFlowUI : MonoBehaviour
         int count = Enum.GetValues(typeof(CatDifficulty)).Length;
         _selectedDifficulty = (CatDifficulty)(((int)_selectedDifficulty + 1) % count);
         _draft.catDifficulty = _selectedDifficulty;
+        InvalidateValidation();
         UpdateEditorLabels();
     }
 
@@ -475,6 +840,7 @@ public class GameFlowUI : MonoBehaviour
         if (_gridManager == null)
             return;
 
+        InvalidateValidation();
         int width = _selectedSize;
         int height = _selectedShape == BoardShape.Rectangle
             ? Mathf.Max(5, _selectedSize - 2)
@@ -523,14 +889,24 @@ public class GameFlowUI : MonoBehaviour
         TMP_Text lockButtonLabel = _lockButton.GetComponentInChildren<TMP_Text>(true);
         if (lockButtonLabel != null)
             lockButtonLabel.text = _boardLocked ? "UNLOCK BOARD" : "LOCK BOARD";
+        RefreshEditorButtons();
     }
 
     private void SaveDraft()
     {
+        if (_busy)
+            return;
+
+        if (!_draftValidated)
+        {
+            SetStatus("Validate the level first.");
+            return;
+        }
+
         if (!int.TryParse(_levelNumberInput.text, out int levelNumber) ||
             levelNumber < 1 || levelNumber > 999)
         {
-            Debug.LogWarning("Enter a custom level number from 1 to 999.", this);
+            SetStatus("Enter a custom level number from 1 to 999.");
             return;
         }
 
@@ -538,10 +914,11 @@ public class GameFlowUI : MonoBehaviour
         _draft.levelId = $"custom-level-{levelNumber}";
         _draft.displayName = $"Level {levelNumber}";
         _draft.blockedCells = new List<Vector2Int>(_draftBlocks);
-        LevelValidationResult validation = LevelValidator.Validate(_draft);
+        LevelValidationResult validation = LevelValidator.ValidateWinnable(_draft);
         if (!validation.IsValid)
         {
-            Debug.LogWarning(validation.Message, this);
+            SetStatus(validation.Message);
+            InvalidateValidation();
             return;
         }
 
