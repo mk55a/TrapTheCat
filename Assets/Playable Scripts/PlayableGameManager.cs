@@ -5,6 +5,7 @@ using UnityEngine.UI;
 public class PlayableGameManager : MonoBehaviour, IGameSessionController
 {
     [SerializeField] private GameObject _cat;
+    [SerializeField] private TextAsset _levelData;
     [SerializeField] private GameObject _levelEndPanel;
     [SerializeField] private TMP_Text _levelEndText;
     [SerializeField] private Button _retryButton;
@@ -103,7 +104,7 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
             _levelEndPanel.SetActive(false);
 
         if (!PlayableLevelLoader.Load(
-                "Playable/PlayableLevel",
+                _levelData,
                 _gridManager,
                 _cat.transform,
                 _catMovement))

@@ -26,15 +26,14 @@ public class PlayableCellData
 public static class PlayableLevelLoader
 {
     public static bool Load(
-        string resourcePath,
+        TextAsset levelFile,
         GridManager gridManager,
         Transform cat,
         CatMovement catMovement)
     {
-        TextAsset levelFile = Resources.Load<TextAsset>(resourcePath);
         if (levelFile == null)
         {
-            Debug.LogError($"Could not load playable level JSON at Resources/{resourcePath}.json.");
+            Debug.LogError("Playable level JSON TextAsset is not assigned.");
             return false;
         }
 

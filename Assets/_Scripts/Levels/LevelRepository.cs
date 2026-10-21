@@ -12,7 +12,9 @@ public static class LevelRepository
 
     private static string ProjectCatalogPath
     {
-        get { return Path.Combine(Application.dataPath, "Resources", "Levels", CatalogFileName); }
+        get { return Path.Combine(
+            Path.Combine(Application.dataPath, "Resources"),
+            Path.Combine("Levels", CatalogFileName)); }
     }
 
     private static string UserCatalogPath
@@ -22,7 +24,9 @@ public static class LevelRepository
 
     private static string LegacyProjectLevelsPath
     {
-        get { return Path.Combine(Application.dataPath, "Resources", "Levels", "Custom"); }
+        get { return Path.Combine(
+            Path.Combine(Application.dataPath, "Resources"),
+            Path.Combine("Levels", "Custom")); }
     }
 
     private static string LegacyUserLevelsPath

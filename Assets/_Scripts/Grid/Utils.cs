@@ -35,7 +35,7 @@ namespace EmptyCharacter.Utils
         {
             if (cachedCanvasTransform == null)
             {
-                Canvas canvas = MonoBehaviour.FindAnyObjectByType<Canvas>();
+                Canvas canvas = Object.FindObjectOfType<Canvas>();
                 if (canvas != null)
                 {
                     cachedCanvasTransform = canvas.transform;

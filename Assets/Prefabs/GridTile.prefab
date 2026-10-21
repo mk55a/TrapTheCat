@@ -142,3 +142,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7752ec7c66f35ac4d8d3e13a949ed4fe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _emptySprite: {fileID: 852672169, guid: e62b24b7b2ebcd941bc3335147666758, type: 3}
+  _blockedSprite: {fileID: 1943856943, guid: e62b24b7b2ebcd941bc3335147666758, type: 3}

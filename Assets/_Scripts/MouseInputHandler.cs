@@ -14,10 +14,11 @@ public class MouseInputHandler : MonoBehaviour
 
     public static MouseInputHandler Instance;
 
-    private Texture2D _pointerCursor;
-    private Texture2D _handPointCursor;
-    private Texture2D _handOpenCursor;
-    private Texture2D _handClosedCursor;
+    [SerializeField] private Texture2D _pointerCursor;
+    [SerializeField] private Texture2D _handPointCursor;
+    [SerializeField] private Texture2D _handOpenCursor;
+    [SerializeField] private Texture2D _handClosedCursor;
+    [SerializeField] private Canvas _cursorCanvas;
     private CursorState _cursorState = (CursorState)(-1);
     private GridTile _hoveredTile;
     private bool _holdingSelectableTile;
@@ -31,19 +32,15 @@ public class MouseInputHandler : MonoBehaviour
             return;
         }
         Instance = this;
-        _pointerCursor = Resources.Load<Texture2D>("UI/pointer_c");
-        _handPointCursor = Resources.Load<Texture2D>("UI/hand_point");
-        _handOpenCursor = Resources.Load<Texture2D>("UI/hand_open");
-        _handClosedCursor = Resources.Load<Texture2D>("UI/hand_closed");
 
         if (_pointerCursor == null || _handPointCursor == null ||
             _handOpenCursor == null || _handClosedCursor == null)
-            Debug.LogError("Could not load all cursor textures from Resources/UI.", this);
+            Debug.LogError("MouseInputHandler requires all four cursor textures to be assigned.", this);
     }
 
     private void Start()
     {
-        Button[] buttons = FindObjectsOfType<Button>(true);
+        Button[] buttons = FindObjectsOfType<Button>();
         CursorTooltip tooltip = null;
 
         foreach (Button button in buttons)
@@ -232,7 +229,9 @@ public class MouseInputHandler : MonoBehaviour
         if (texture == null)
             return;
 
+#if !UNITY_LUNA
         Cursor.SetCursor(texture, hotspot, CursorMode.Auto);
+#endif
         _cursorState = state;
     }
 
@@ -240,8 +239,10 @@ public class MouseInputHandler : MonoBehaviour
     {
         if (_hoveredTile != null)
             _hoveredTile.SetHovered(false);
+#if !UNITY_LUNA
         if (Instance == this)
             Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
+#endif
         if (Instance == this)
             Instance = null;
     }
@@ -253,8 +254,10 @@ public class MouseInputHandler : MonoBehaviour
             _hoveredTile.SetHovered(false);
             _hoveredTile = null;
         }
+#if !UNITY_LUNA
         if (Instance == this)
             Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
+#endif
         _cursorState = (CursorState)(-1);
     }
 }

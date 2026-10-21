@@ -7,9 +7,8 @@ public class GridTile : MonoBehaviour
     [SerializeField] private Color _clickFlashColor = new Color(1f, 0.78f, 0.36f, 1f);
     [SerializeField] private float _clickAnimationDuration = 0.24f;
     [SerializeField] private float _animationSmoothing = 14f;
-
-    private static Sprite _emptySprite;
-    private static Sprite _blockedSprite;
+    [SerializeField] private Sprite _emptySprite;
+    [SerializeField] private Sprite _blockedSprite;
 
     private GridMapObject _gridObject;
     private SpriteRenderer _spriteRenderer;
@@ -23,7 +22,6 @@ public class GridTile : MonoBehaviour
     private void Awake()
     {
         _spriteRenderer = GetComponent<SpriteRenderer>();
-        LoadSprites();
     }
 
     public void Initialize(GridMapObject gridObject, float hexRadius)
@@ -32,9 +30,11 @@ public class GridTile : MonoBehaviour
         if (_spriteRenderer == null)
             _spriteRenderer = GetComponent<SpriteRenderer>();
 
-        LoadSprites();
         if (_emptySprite == null || _blockedSprite == null)
+        {
+            Debug.LogError("GridTile requires assigned empty and blocked sprites.", this);
             return;
+        }
 
         _spriteRenderer.sprite = _emptySprite;
 
@@ -129,21 +129,4 @@ public class GridTile : MonoBehaviour
             Time.unscaledDeltaTime * _animationSmoothing);
     }
 
-    private static void LoadSprites()
-    {
-        if (_emptySprite != null && _blockedSprite != null)
-            return;
-
-        Sprite[] sprites = Resources.LoadAll<Sprite>("Art/Tiles_Sprites");
-        foreach (Sprite sprite in sprites)
-        {
-            if (sprite.name == "Tiles_Sprites_0")
-                _emptySprite = sprite;
-            else if (sprite.name == "Tiles_Sprites_1")
-                _blockedSprite = sprite;
-        }
-
-        if (_emptySprite == null || _blockedSprite == null)
-            Debug.LogError("Tiles_Sprites must contain Tiles_Sprites_0 (empty) and Tiles_Sprites_1 (blocked).");
-    }
 }
