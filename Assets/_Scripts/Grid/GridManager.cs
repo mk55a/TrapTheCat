@@ -11,6 +11,7 @@ public class GridManager : MonoBehaviour
     [SerializeField] public GameObject gridTilePrefab;
     [SerializeField] public GameObject originObject;
     [SerializeField] private bool _debugGrid;
+    [SerializeField, Min(0f)] private float _spawnWaveDuration = 0.9f;
 
     public Grid<GridMapObject> grid;
     public float fullNumberOfGrids;
@@ -39,7 +40,6 @@ public class GridManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-        InitiateGrid();
     }
 
     private void OnDestroy()
@@ -58,7 +58,8 @@ public class GridManager : MonoBehaviour
         InitiateGrid(gridWidth, gridHeight, BoardShape.Rectangle);
     }
 
-    public void InitiateGrid(int gridWidth, int gridHeight, BoardShape shape)
+    // With animate set, tiles pop in as a wave rippling outward from the board centre.
+    public void InitiateGrid(int gridWidth, int gridHeight, BoardShape shape, bool animate = false)
     {
         if (gridWidth < 3 || gridHeight < 3 || gridCellSize <= 0f ||
             _tileSpacingMultiplier < 1f ||
@@ -89,6 +90,19 @@ public class GridManager : MonoBehaviour
             (g, x, y) => new GridMapObject(g, x, y),
             _debugGrid);
 
+        Vector3 boardCenter = GetCenterGridPosition(width / 2, height / 2);
+        float maxDistance = 0.001f;
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (_activeCells[x, y])
+                    maxDistance = Mathf.Max(
+                        maxDistance,
+                        Vector3.Distance(GetCenterGridPosition(x, y), boardCenter));
+            }
+        }
+
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
@@ -110,6 +124,11 @@ public class GridManager : MonoBehaviour
                 {
                     _tileObjects[x, y] = gridTile;
                     gridTile.Initialize(grid.GetGridObject(x, y), HexRadius);
+                    if (animate)
+                    {
+                        float ring = Vector3.Distance(GetCenterGridPosition(x, y), boardCenter) / maxDistance;
+                        gridTile.PlaySpawn(ring * _spawnWaveDuration + Random.Range(0f, 0.06f));
+                    }
                 }
             }
         }

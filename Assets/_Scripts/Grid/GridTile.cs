@@ -7,6 +7,13 @@ public class GridTile : MonoBehaviour
     [SerializeField] private Color _clickFlashColor = new Color(1f, 0.78f, 0.36f, 1f);
     [SerializeField] private float _clickAnimationDuration = 0.24f;
     [SerializeField] private float _animationSmoothing = 14f;
+    [SerializeField] private float _spawnDuration = 0.4f;
+
+    private bool _spawning;
+    private float _spawnDelay;
+    private float _spawnTime;
+    private float _typeHold;
+    private bool _pulseOnRelease;
 
     private static Sprite _emptySprite;
     private static Sprite _blockedSprite;
@@ -50,9 +57,62 @@ public class GridTile : MonoBehaviour
         _lastType = GridType.Empty;
     }
 
+    // Keeps showing the empty sprite for a while even if the cell is already blocked,
+    // then pops the blocked sprite in with a click pulse.
+    public void HoldVisualType(float seconds)
+    {
+        _typeHold = Mathf.Max(0f, seconds);
+        _hasAppliedType = false;
+        _lastType = GridType.Empty;
+        _pulseOnRelease = true;
+        if (_spriteRenderer != null)
+            _spriteRenderer.sprite = _emptySprite;
+    }
+
     public void SetHovered(bool isHovered)
     {
         _isHovered = isHovered;
+    }
+
+    // Hides the tile until the delay passes, then pops it in with a small overshoot.
+    public void PlaySpawn(float delay)
+    {
+        if (_spriteRenderer == null)
+            return;
+
+        _spawning = true;
+        _spawnDelay = Mathf.Max(0f, delay);
+        _spawnTime = 0f;
+        transform.localScale = Vector3.zero;
+        Color hidden = _baseColor;
+        hidden.a = 0f;
+        _spriteRenderer.color = hidden;
+    }
+
+    private bool UpdateSpawn()
+    {
+        if (_spawnDelay > 0f)
+        {
+            _spawnDelay -= Time.unscaledDeltaTime;
+            return true;
+        }
+
+        _spawnTime += Time.unscaledDeltaTime;
+        float t = Mathf.Clamp01(_spawnTime / _spawnDuration);
+        const float overshoot = 1.9f;
+        float s = t - 1f;
+        float eased = 1f + (overshoot + 1f) * s * s * s + overshoot * s * s;
+        transform.localScale = _baseScale * Mathf.Max(0f, eased);
+        Color color = _baseColor;
+        color.a = Mathf.Clamp01(t * 2.5f);
+        _spriteRenderer.color = color;
+        if (t >= 1f)
+        {
+            _spawning = false;
+            transform.localScale = _baseScale;
+            _spriteRenderer.color = _baseColor;
+        }
+        return _spawning;
     }
 
     public void PlayClickFeedback()
@@ -65,8 +125,21 @@ public class GridTile : MonoBehaviour
         if (_spriteRenderer == null)
             return;
 
-        if (_gridObject != null)
+        bool holding = _typeHold > 0f;
+        if (holding)
         {
+            _typeHold -= Time.unscaledDeltaTime;
+            if (_typeHold <= 0f)
+                holding = false;
+        }
+
+        if (_gridObject != null && !holding)
+        {
+            if (_pulseOnRelease)
+            {
+                _pulseOnRelease = false;
+                PlayClickFeedback();
+            }
             GridType type = _gridObject.GetCellType();
             if (!_hasAppliedType || _lastType != type)
             {
@@ -77,6 +150,9 @@ public class GridTile : MonoBehaviour
                     : _emptySprite;
             }
         }
+
+        if (_spawning && UpdateSpawn())
+            return;
 
         float clickPulse = 0f;
         float clickScaleX = 1f;

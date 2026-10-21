@@ -126,6 +126,7 @@ public class GameFlowUI : MonoBehaviour
     {
         _isEditing = false;
         _gameManager.SetEditorMode(false);
+        _gridManager.DestroyGrid();
         _homePanel.SetActive(true);
         _levelsPanel.SetActive(false);
         _editorPanel.SetActive(false);
@@ -138,6 +139,7 @@ public class GameFlowUI : MonoBehaviour
     {
         _isEditing = false;
         _gameManager.SetEditorMode(false);
+        _gridManager.DestroyGrid();
         _homePanel.SetActive(false);
         _levelsPanel.SetActive(true);
         _editorPanel.SetActive(false);
@@ -184,7 +186,7 @@ public class GameFlowUI : MonoBehaviour
         CancelJob();
         _history.Clear();
         _sizeSlider.SetValueWithoutNotify(_selectedSize);
-        RefreshEditorBoard();
+        RefreshEditorBoard(true);
         _homePanel.SetActive(false);
         _levelsPanel.SetActive(false);
         _editorPanel.SetActive(true);
@@ -357,7 +359,7 @@ public class GameFlowUI : MonoBehaviour
 
         _selectedSize = Mathf.RoundToInt(value);
         ResetLayout();
-        RefreshEditorBoard();
+        RefreshEditorBoard(true);
         UpdateEditorLabels();
     }
 
@@ -790,7 +792,7 @@ public class GameFlowUI : MonoBehaviour
         int current = (int)_selectedShape;
         _selectedShape = (BoardShape)((current + direction + count) % count);
         ResetLayout();
-        RefreshEditorBoard();
+        RefreshEditorBoard(true);
         UpdateEditorLabels();
     }
 
@@ -835,7 +837,7 @@ public class GameFlowUI : MonoBehaviour
         UpdateEditorLabels();
     }
 
-    private void RefreshEditorBoard()
+    private void RefreshEditorBoard(bool animate = false)
     {
         if (_gridManager == null)
             return;
@@ -853,7 +855,7 @@ public class GameFlowUI : MonoBehaviour
         _draft.height = height;
         _draft.catDifficulty = _selectedDifficulty;
         _draft.blockedCells = new List<Vector2Int>(_draftBlocks);
-        _gridManager.InitiateGrid(width, height, _selectedShape);
+        _gridManager.InitiateGrid(width, height, _selectedShape, animate);
         foreach (Vector2Int blocked in _draftBlocks)
             _gridManager.SetCellType(blocked.x, blocked.y, GridType.Obstacle);
 
