@@ -14,7 +14,8 @@ public class PlayableLevelData
     public int catStartY = 5;
     public string catDifficulty = "Normal";
     public List<PlayableCellData> blockedCells = new List<PlayableCellData>();
-}
+        public PlayableCellData tutorialCell;
+    }
 
 [Serializable]
 public class PlayableCellData
@@ -29,8 +30,10 @@ public static class PlayableLevelLoader
         TextAsset levelFile,
         GridManager gridManager,
         Transform cat,
-        CatMovement catMovement)
+        CatMovement catMovement,
+        out PlayableCellData tutorialCell)
     {
+        tutorialCell = null;
         if (levelFile == null)
         {
             Debug.LogError("Playable level JSON TextAsset is not assigned.");
@@ -69,6 +72,9 @@ public static class PlayableLevelLoader
         gridManager.SetCatPosition(level.catStartX, level.catStartY);
         catMovement.SetDifficulty(difficulty);
         catMovement.RefreshPathfinding();
+        if (level.tutorialCell != null &&
+            BoardTopology.IsActive(level.width, level.height, shape, level.tutorialCell.x, level.tutorialCell.y))
+            tutorialCell = level.tutorialCell;
         return true;
     }
 

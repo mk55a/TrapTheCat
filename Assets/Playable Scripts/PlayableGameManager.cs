@@ -10,16 +10,25 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
     [SerializeField] private TMP_Text _levelEndText;
     [SerializeField] private Button _retryButton;
     [SerializeField] private Button _continueButton;
+    [SerializeField] private int _maxPlayerMoves = 3;
 
     private GridManager _gridManager;
     private CatMovement _catMovement;
     private Turn _currentTurn;
     private bool _gameOver;
+    private int _movesUsed;
+    private PlayableCellData _tutorialCell;
 
     public bool IsGameOver
     {
         get { return _gameOver; }
     }
+
+    public bool PlayerWon { get; private set; }
+    public int MovesUsed { get { return _movesUsed; } }
+    public int MovesLeft { get { return Mathf.Max(0, _maxPlayerMoves - _movesUsed); } }
+    public PlayableCellData TutorialCell { get { return _tutorialCell; } }
+    public GridManager Grid { get { return _gridManager; } }
 
     public bool IsEditorMode
     {
@@ -76,6 +85,7 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
         if (_gameOver || _currentTurn != Turn.Player)
             return;
 
+        _movesUsed++;
         ChangeTurn();
     }
 
@@ -85,6 +95,9 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
             return;
 
         _currentTurn = _currentTurn == Turn.Player ? Turn.Cat : Turn.Player;
+        // Out of moves: the player never gets the turn back, so the cat walks out.
+        if (_currentTurn == Turn.Player && _movesUsed >= _maxPlayerMoves)
+            _currentTurn = Turn.Cat;
         GameSession.NotifyTurnChanged();
     }
 
@@ -99,6 +112,8 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
     private void StartLevel()
     {
         _gameOver = false;
+        PlayerWon = false;
+        _movesUsed = 0;
         _currentTurn = Turn.Player;
         if (_levelEndPanel != null)
             _levelEndPanel.SetActive(false);
@@ -107,7 +122,8 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
                 _levelData,
                 _gridManager,
                 _cat.transform,
-                _catMovement))
+                _catMovement,
+                out _tutorialCell))
         {
             _gameOver = true;
             return;
@@ -119,12 +135,12 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
 
     private void OnCatTrapped()
     {
-        EndLevel("TRAPPED", true);
+        EndLevel("CAT TRAPPED!", true);
     }
 
     private void OnCatEscaped()
     {
-        EndLevel("CAT ESCAPED", false);
+        EndLevel("OH NO, IT ESCAPED!", false);
     }
 
     private void EndLevel(string message, bool playerWon)
@@ -133,6 +149,7 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
             return;
 
         _gameOver = true;
+        PlayerWon = playerWon;
         _currentTurn = Turn.Player;
         Cat cat = _cat.GetComponent<Cat>();
         if (cat != null)
@@ -143,9 +160,9 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
         if (_levelEndText != null)
             _levelEndText.text = message;
         if (_retryButton != null)
-            _retryButton.gameObject.SetActive(!playerWon);
+            _retryButton.gameObject.SetActive(true);
         if (_continueButton != null)
-            _continueButton.gameObject.SetActive(playerWon);
+            _continueButton.gameObject.SetActive(true);
         if (_levelEndPanel != null)
             _levelEndPanel.SetActive(true);
 
