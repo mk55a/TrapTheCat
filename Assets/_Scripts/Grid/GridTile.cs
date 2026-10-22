@@ -35,7 +35,10 @@ public class GridTile : MonoBehaviour
     private GridType _lastType;
     private bool _hasAppliedType;
     private bool _isHovered;
+    private bool _guideHover;
+    private bool _danger;
     private float _clickAnimationTime;
+    private static readonly Color DangerColor = new Color(1f, 0.4f, 0.4f, 1f);
 
     private void Awake()
     {
@@ -83,6 +86,18 @@ public class GridTile : MonoBehaviour
     public void SetHovered(bool isHovered)
     {
         _isHovered = isHovered;
+    }
+
+    // Hover driven by something other than the real pointer, e.g. the tutorial hand.
+    public void SetGuideHover(bool hovered)
+    {
+        _guideHover = hovered;
+    }
+
+    // Soft red pulse marking an exit the cat can still reach.
+    public void SetDanger(bool danger)
+    {
+        _danger = danger;
     }
 
     // Hides the tile until the delay passes, then pops it in with a small overshoot.
@@ -160,7 +175,7 @@ public class GridTile : MonoBehaviour
                 desired = BlockedSprite;
             else if (_clickAnimationTime > 0f && _pressedSprite != null)
                 desired = _pressedSprite;
-            else if (_isHovered && _hoverSprite != null)
+            else if ((_isHovered || _guideHover) && _hoverSprite != null)
                 desired = _hoverSprite;
             if (desired != null && _spriteRenderer.sprite != desired)
                 _spriteRenderer.sprite = desired;
@@ -199,7 +214,8 @@ public class GridTile : MonoBehaviour
             }
         }
 
-        float hoverScale = _isHovered ? _hoverScaleMultiplier : 1f;
+        bool hovered = _isHovered || _guideHover;
+        float hoverScale = hovered ? _hoverScaleMultiplier : 1f;
         Vector3 targetScale = new Vector3(
             _baseScale.x * hoverScale * clickScaleX,
             _baseScale.y * hoverScale * clickScaleY,
@@ -209,9 +225,11 @@ public class GridTile : MonoBehaviour
             targetScale,
             Time.unscaledDeltaTime * _animationSmoothing);
 
-        Color targetColor = _isHovered
+        Color targetColor = hovered
             ? Color.Lerp(_baseColor, _hoverColor, 0.45f)
             : _baseColor;
+        if (_danger && !hovered)
+            targetColor = Color.Lerp(_baseColor, DangerColor, 0.35f + 0.2f * Mathf.Sin(Time.unscaledTime * 5f));
         if (clickPulse > 0f)
             targetColor = Color.Lerp(targetColor, _clickFlashColor, clickPulse * 0.8f);
         _spriteRenderer.color = Color.Lerp(

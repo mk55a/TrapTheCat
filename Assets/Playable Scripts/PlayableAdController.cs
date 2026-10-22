@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,11 +14,17 @@ public class PlayableAdController : MonoBehaviour
     [SerializeField] private RectTransform _endPanel;
     [SerializeField] private Button _installButton;
     [SerializeField] private Button _retryButton;
-    [SerializeField] private string _introMessage = "TRAP THE CAT!\nBlock tiles so it can't reach the edge";
+    [SerializeField] private string _introMessage = "Don't let it escape!";
     [SerializeField] private string _installLabel = "INSTALL NOW";
-    [SerializeField] private string _nextLevelLabel = "NEXT LEVEL";
     [SerializeField] private string _retryLabel = "TRY AGAIN";
+    [SerializeField] private float _idleHelpSeconds = 3f;
 
+    private readonly List<Vector2Int> _dangerCells = new List<Vector2Int>();
+    private GridTile _guideTile;
+    private bool _dangerDirty = true;
+    private bool _catPanicking;
+    private float _nextMeowTime;
+    private float _lastPhase;
     private RectTransform _canvasRect;
     private RectTransform _handRect;
     private RawImage _hand;
@@ -38,7 +45,7 @@ public class PlayableAdController : MonoBehaviour
         }
 
         _canvasRect = _canvas.transform as RectTransform;
-        BuildBanner();
+        FindBanner();
         BuildHand();
         if (_endPanel != null && _endPanel.childCount > 0)
         {
@@ -54,14 +61,113 @@ public class PlayableAdController : MonoBehaviour
 
     private void Update()
     {
+        UpdateDanger();
+        UpdateCatPanic();
         UpdateGuidance();
         UpdateEndCard();
     }
 
+    // The cat meows now and then while it is running out of exits.
+    private void UpdateCatPanic()
+    {
+        CatMovement catMover = _manager.CatMover;
+        if (catMover == null || !_catPanicking || _manager.IsGameOver || Time.time < _nextMeowTime)
+            return;
+
+        CatSpriteAnimator animator = catMover.GetComponent<CatSpriteAnimator>();
+        if (animator == null)
+            return;
+
+        animator.PlayMeow();
+        _nextMeowTime = Time.time + 2.5f;
+    }
+
+    private void OnEnable()
+    {
+        GameSession.TurnChanged += MarkDangerDirty;
+    }
+
+    private void OnDisable()
+    {
+        GameSession.TurnChanged -= MarkDangerDirty;
+    }
+
+    private void MarkDangerDirty()
+    {
+        _dangerDirty = true;
+    }
+
+    // Tints every open edge tile the cat can still reach so the player sees where to block.
+    private void UpdateDanger()
+    {
+        if (!_dangerDirty || Time.unscaledTime < LevelReveal.ReadyTime)
+            return;
+
+        GridManager grid = _manager.Grid;
+        CatMovement catMover = _manager.CatMover;
+        if (grid == null || grid.grid == null || catMover == null)
+            return;
+
+        _dangerDirty = false;
+        ClearDanger(grid);
+        if (_manager.IsGameOver)
+            return;
+
+        CatBoard board = grid.CreateCatBoard();
+        if (board == null ||
+            !grid.TryGetGridCoordinates(catMover.transform.position, out int catX, out int catY))
+            return;
+
+        int cat = board.Index(catX, catY);
+        board.RunBfs(cat, -1);
+        _dangerCells.Clear();
+        for (int i = 0; i < board.Count; i++)
+        {
+            if (i != cat && board.IsPerimeter(i) && !board.IsBlocked(i) && board.Distance(i) > 0)
+                _dangerCells.Add(board.Cell(i));
+        }
+        // Few exits left: the cat panics.
+        _catPanicking = _dangerCells.Count > 0 && _dangerCells.Count <= 2;
+
+        foreach (Vector2Int cell in _dangerCells)
+        {
+            GridTile tile = grid.GetTileAt(cell.x, cell.y);
+            if (tile != null)
+                tile.SetDanger(true);
+        }
+    }
+
+    private void ClearDanger(GridManager grid)
+    {
+        foreach (Vector2Int cell in _dangerCells)
+        {
+            GridTile tile = grid.GetTileAt(cell.x, cell.y);
+            if (tile != null)
+                tile.SetDanger(false);
+        }
+        _dangerCells.Clear();
+    }
+
+    private void SetGuideTile(GridTile tile)
+    {
+        if (_guideTile == tile)
+            return;
+
+        if (_guideTile != null)
+            _guideTile.SetGuideHover(false);
+        _guideTile = tile;
+        if (_guideTile != null)
+            _guideTile.SetGuideHover(true);
+    }
+
     private void UpdateGuidance()
     {
-        bool revealDone = Time.unscaledTime >= LevelReveal.ReadyTime;
-        bool guiding = revealDone && !_manager.IsGameOver && _manager.MovesUsed == 0 &&
+        float readyTime = LevelReveal.ReadyTime;
+        bool revealDone = Time.unscaledTime >= readyTime;
+        // Level 1 always points at the tile; level 2 only after the player hesitates; level 3 never.
+        float helpDelay = _manager.LevelIndex == 0 ? 0f : (_manager.LevelIndex == 1 ? _idleHelpSeconds : float.MaxValue);
+        bool guiding = revealDone && Time.unscaledTime >= readyTime + helpDelay &&
+                       !_manager.IsGameOver && _manager.MovesUsed == 0 &&
                        _manager.TutorialCell != null && _manager.Grid != null &&
                        _manager.Grid.grid != null;
 
@@ -70,9 +176,13 @@ public class PlayableAdController : MonoBehaviour
         if (_hand != null)
             _hand.gameObject.SetActive(guiding);
         if (!guiding || _hand == null)
+        {
+            SetGuideTile(null);
             return;
+        }
 
         PlayableCellData cell = _manager.TutorialCell;
+        SetGuideTile(_manager.Grid.GetTileAt(cell.x, cell.y));
         Vector3 world = _manager.Grid.GetCenterGridPosition(cell.x, cell.y);
         Camera cam = Camera.main;
         if (cam == null)
@@ -85,6 +195,10 @@ public class PlayableAdController : MonoBehaviour
 
         float phase = Mathf.Repeat(Time.time, 1.1f) / 1.1f;
         float tap = Mathf.Sin(phase * Mathf.PI);
+        // The hand presses down at mid-cycle and the tile reacts at the same moment.
+        if (_lastPhase < 0.5f && phase >= 0.5f && _guideTile != null)
+            _guideTile.PlayClickFeedback();
+        _lastPhase = phase;
         _handRect.anchoredPosition = local - _canvasRect.rect.center + new Vector2(0f, 40f * (1f - tap));
         _handRect.localScale = Vector3.one * (1f - 0.15f * tap);
     }
@@ -97,8 +211,8 @@ public class PlayableAdController : MonoBehaviour
         bool shown = _endPanel.gameObject.activeInHierarchy;
         if (shown && !_endShown)
         {
-            SetLabel(_installButton, _manager.AdvancesToNextLevel ? _nextLevelLabel : _installLabel);
-            SetLabel(_retryButton, _retryLabel);
+            _endShownTime = Time.time;
+            SetLabel(_installButton, _installLabel);
         }
         _endShown = shown;
         if (!shown)
@@ -116,29 +230,19 @@ public class PlayableAdController : MonoBehaviour
         }
     }
 
-    private void BuildBanner()
+    // Uses the IntroBanner authored in the scene so its styling is preserved.
+    private void FindBanner()
     {
-        GameObject go = new GameObject("IntroBanner", typeof(RectTransform), typeof(TextMeshProUGUI));
-        go.transform.SetParent(_canvas.transform, false);
-        RectTransform rect = go.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 1f);
-        rect.anchorMax = new Vector2(0.5f, 1f);
-        rect.pivot = new Vector2(0.5f, 1f);
-        rect.anchoredPosition = new Vector2(0f, -40f);
-        rect.sizeDelta = new Vector2(1400f, 200f);
-
-        TextMeshProUGUI text = go.GetComponent<TextMeshProUGUI>();
-        if (_fontSource != null)
+        Transform banner = _canvas.transform.Find("GameplayControls/IntroBanner");
+        if (banner == null)
         {
-            text.font = _fontSource.font;
-            text.fontSharedMaterial = _fontSource.fontSharedMaterial;
+            Debug.LogError("PlayableAdController could not find Canvas/GameplayControls/IntroBanner.", this);
+            return;
         }
-        text.text = _introMessage;
-        text.alignment = TextAlignmentOptions.Center;
-        text.fontSize = 56f;
-        text.color = Color.white;
-        text.raycastTarget = false;
-        _banner = text;
+
+        _banner = banner.GetComponent<TMP_Text>();
+        if (_banner != null && !string.IsNullOrEmpty(_introMessage))
+            _banner.text = _introMessage;
     }
 
     private void BuildHand()

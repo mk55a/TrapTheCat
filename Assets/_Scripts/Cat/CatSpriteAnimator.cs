@@ -90,6 +90,14 @@ public class CatSpriteAnimator : MonoBehaviour
         }
     }
 
+    public void PlayMeow()
+    {
+        if (!CanAnimate() || !IsIdle())
+            return;
+
+        _animator.SetTrigger(MeowParam);
+    }
+
     public void PlaySleeping()
     {
         if (!CanAnimate())

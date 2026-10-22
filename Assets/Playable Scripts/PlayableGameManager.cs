@@ -20,11 +20,20 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
     private int _movesUsed;
     private PlayableCellData _tutorialCell;
     private int _levelIndex;
+    private bool _endCardShown;
+    private float _playStart = -1f;
+
+    private const float AdvanceDelay = 1f;
+    private const float WinCardDelay = 1.2f;
+    private const float LossCardDelay = 0.8f;
+    private const float MaxPlaySeconds = 38f;
+    private const string WinMessage = "Genius! 200+ levels await";
+    private const string LossMessage = "So close! Can you trap it?";
 
     public int LevelIndex { get { return _levelIndex; } }
     public bool HasNextLevel { get { return _levels != null && _levelIndex + 1 < _levels.Length; } }
-    // True when the end card should lead to the next level instead of the install page.
-    public bool AdvancesToNextLevel { get { return _gameOver && PlayerWon && HasNextLevel; } }
+    public bool EndCardShown { get { return _endCardShown; } }
+    public CatMovement CatMover { get { return _catMovement; } }
 
     public bool IsGameOver
     {
@@ -138,6 +147,9 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
             return;
         }
 
+        if (_playStart < 0f)
+            _playStart = Time.unscaledTime;
+
         // Active before loading so the reveal can hide the cat's renderers.
         _cat.SetActive(true);
         if (!PlayableLevelLoader.Load(
@@ -178,10 +190,59 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
         if (playerWon)
             _cat.GetComponent<CatSpriteAnimator>()?.PlayTrappedReaction();
 
+        GameSession.NotifyTurnChanged();
+        if (playerWon && HasNextLevel)
+            StartCoroutine(AdvanceAfter(AdvanceDelay));
+        else
+            StartCoroutine(ShowEndCardAfter(playerWon ? WinCardDelay : LossCardDelay, playerWon));
+    }
+
+    private IEnumerator AdvanceAfter(float seconds)
+    {
+        yield return new WaitForSecondsRealtime(seconds);
+        if (_endCardShown)
+            yield break;
+
+        _levelIndex++;
+        StartLevel();
+    }
+
+    private IEnumerator ShowEndCardAfter(float seconds, bool playerWon)
+    {
+        yield return new WaitForSecondsRealtime(seconds);
+        ShowEndCard(playerWon);
+    }
+
+    private void Update()
+    {
+        if (_playStart < 0f || _endCardShown)
+            return;
+
+        if (Time.unscaledTime - _playStart >= MaxPlaySeconds)
+        {
+            // Idle or stuck players still get the install prompt.
+            StopAllCoroutines();
+            _gameOver = true;
+            PlayerWon = false;
+            Cat cat = _cat.GetComponent<Cat>();
+            if (cat != null)
+                cat.SetCanMove(false);
+            ShowEndCard(false);
+        }
+    }
+
+    private void ShowEndCard(bool playerWon)
+    {
+        if (_endCardShown)
+            return;
+
+        _endCardShown = true;
+        if (!playerWon)
+            _cat.GetComponent<CatSpriteAnimator>()?.PlayIdle();
         if (_levelEndText != null)
-            _levelEndText.text = message;
+            _levelEndText.text = playerWon ? WinMessage : LossMessage;
         if (_retryButton != null)
-            _retryButton.gameObject.SetActive(!AdvancesToNextLevel);
+            _retryButton.gameObject.SetActive(false);
         if (_continueButton != null)
             _continueButton.gameObject.SetActive(true);
         if (_levelEndPanel != null)
@@ -189,24 +250,19 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
 
         GameSession.NotifyTurnChanged();
 #if UNITY_LUNA
-        if (!AdvancesToNextLevel)
-            Luna.Unity.LifeCycle.GameEnded();
+        Luna.Unity.LifeCycle.GameEnded();
 #endif
     }
 
     private void ContinueToInstall()
     {
-        if (AdvancesToNextLevel)
-        {
-            _levelIndex++;
-            StartLevel();
-            return;
-        }
-
 #if UNITY_LUNA
         Luna.Unity.Playable.InstallFullGame();
 #else
-        RestartLevel();
+        _levelIndex = 0;
+        _endCardShown = false;
+        _playStart = Time.unscaledTime;
+        StartLevel();
 #endif
     }
 

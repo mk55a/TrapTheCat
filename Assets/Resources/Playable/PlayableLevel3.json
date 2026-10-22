@@ -1,17 +1,15 @@
 {
   "formatVersion": 1,
-  "width": 9,
-  "height": 9,
+  "width": 11,
+  "height": 11,
   "boardShape": "Hexagon",
-  "catStartX": 4,
-  "catStartY": 4,
-  "catDifficulty": "Normal",
-  "tutorialCell": { "x": 6, "y": 4 },
+  "catStartX": 5,
+  "catStartY": 5,
+  "catDifficulty": "Hard",
   "blockedCells": [
-    { "x": 2, "y": 3 },
-    { "x": 5, "y": 5 },
-    { "x": 4, "y": 6 },
-    { "x": 5, "y": 2 },
-    { "x": 2, "y": 5 }
+    { "x": 3, "y": 5 },
+    { "x": 7, "y": 5 },
+    { "x": 5, "y": 3 },
+    { "x": 5, "y": 7 }
   ]
 }
