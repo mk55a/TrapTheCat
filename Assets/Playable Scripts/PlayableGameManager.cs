@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -5,7 +6,7 @@ using UnityEngine.UI;
 public class PlayableGameManager : MonoBehaviour, IGameSessionController
 {
     [SerializeField] private GameObject _cat;
-    [SerializeField] private TextAsset _levelData;
+    [SerializeField] private TextAsset[] _levels;
     [SerializeField] private GameObject _levelEndPanel;
     [SerializeField] private TMP_Text _levelEndText;
     [SerializeField] private Button _retryButton;
@@ -18,6 +19,12 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
     private bool _gameOver;
     private int _movesUsed;
     private PlayableCellData _tutorialCell;
+    private int _levelIndex;
+
+    public int LevelIndex { get { return _levelIndex; } }
+    public bool HasNextLevel { get { return _levels != null && _levelIndex + 1 < _levels.Length; } }
+    // True when the end card should lead to the next level instead of the install page.
+    public bool AdvancesToNextLevel { get { return _gameOver && PlayerWon && HasNextLevel; } }
 
     public bool IsGameOver
     {
@@ -62,6 +69,15 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
 
         if (_levelEndPanel != null)
             _levelEndPanel.SetActive(false);
+        _gameOver = true;
+        StartCoroutine(StartFirstLevel());
+    }
+
+    // Wait out the scene-load hitch so the board reveal isn't skipped by a huge first frame time.
+    private IEnumerator StartFirstLevel()
+    {
+        yield return null;
+        yield return null;
         StartLevel();
     }
 
@@ -95,9 +111,6 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
             return;
 
         _currentTurn = _currentTurn == Turn.Player ? Turn.Cat : Turn.Player;
-        // Out of moves: the player never gets the turn back, so the cat walks out.
-        if (_currentTurn == Turn.Player && _movesUsed >= _maxPlayerMoves)
-            _currentTurn = Turn.Cat;
         GameSession.NotifyTurnChanged();
     }
 
@@ -118,8 +131,17 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
         if (_levelEndPanel != null)
             _levelEndPanel.SetActive(false);
 
+        if (_levels == null || _levels.Length == 0 || _levelIndex >= _levels.Length)
+        {
+            Debug.LogError("PlayableGameManager needs at least one level TextAsset.", this);
+            _gameOver = true;
+            return;
+        }
+
+        // Active before loading so the reveal can hide the cat's renderers.
+        _cat.SetActive(true);
         if (!PlayableLevelLoader.Load(
-                _levelData,
+                _levels[_levelIndex],
                 _gridManager,
                 _cat.transform,
                 _catMovement,
@@ -129,7 +151,6 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
             return;
         }
 
-        _cat.SetActive(true);
         GameSession.NotifyTurnChanged();
     }
 
@@ -160,7 +181,7 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
         if (_levelEndText != null)
             _levelEndText.text = message;
         if (_retryButton != null)
-            _retryButton.gameObject.SetActive(true);
+            _retryButton.gameObject.SetActive(!AdvancesToNextLevel);
         if (_continueButton != null)
             _continueButton.gameObject.SetActive(true);
         if (_levelEndPanel != null)
@@ -168,12 +189,20 @@ public class PlayableGameManager : MonoBehaviour, IGameSessionController
 
         GameSession.NotifyTurnChanged();
 #if UNITY_LUNA
-        Luna.Unity.LifeCycle.GameEnded();
+        if (!AdvancesToNextLevel)
+            Luna.Unity.LifeCycle.GameEnded();
 #endif
     }
 
     private void ContinueToInstall()
     {
+        if (AdvancesToNextLevel)
+        {
+            _levelIndex++;
+            StartLevel();
+            return;
+        }
+
 #if UNITY_LUNA
         Luna.Unity.Playable.InstallFullGame();
 #else

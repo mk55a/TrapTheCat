@@ -57,21 +57,26 @@ public static class PlayableLevelLoader
         Enum.TryParse(level.boardShape, true, out BoardShape shape);
         Enum.TryParse(level.catDifficulty, true, out CatDifficulty difficulty);
         catMovement.ResetMovement();
-        gridManager.InitiateGrid(level.width, level.height, shape);
+        gridManager.InitiateGrid(level.width, level.height, shape, true);
         if (gridManager.grid == null)
         {
             Debug.LogError($"Could not create the playable board from '{levelFile.name}'.");
             return false;
         }
 
+        List<Vector2Int> blocked = new List<Vector2Int>();
         foreach (PlayableCellData blockedCell in level.blockedCells)
+        {
             gridManager.SetCellType(blockedCell.x, blockedCell.y, GridType.Obstacle);
+            blocked.Add(new Vector2Int(blockedCell.x, blockedCell.y));
+        }
 
         Vector3 catPosition = gridManager.GetCenterGridPosition(level.catStartX, level.catStartY);
         cat.position = catPosition;
         gridManager.SetCatPosition(level.catStartX, level.catStartY);
         catMovement.SetDifficulty(difficulty);
         catMovement.RefreshPathfinding();
+        LevelReveal.Play(gridManager, cat, blocked);
         if (level.tutorialCell != null &&
             BoardTopology.IsActive(level.width, level.height, shape, level.tutorialCell.x, level.tutorialCell.y))
             tutorialCell = level.tutorialCell;

@@ -15,6 +15,7 @@ public class PlayableAdController : MonoBehaviour
     [SerializeField] private Button _retryButton;
     [SerializeField] private string _introMessage = "TRAP THE CAT!\nBlock tiles so it can't reach the edge";
     [SerializeField] private string _installLabel = "INSTALL NOW";
+    [SerializeField] private string _nextLevelLabel = "NEXT LEVEL";
     [SerializeField] private string _retryLabel = "TRY AGAIN";
 
     private RectTransform _canvasRect;
@@ -59,12 +60,13 @@ public class PlayableAdController : MonoBehaviour
 
     private void UpdateGuidance()
     {
-        bool guiding = !_manager.IsGameOver && _manager.MovesUsed == 0 &&
+        bool revealDone = Time.unscaledTime >= LevelReveal.ReadyTime;
+        bool guiding = revealDone && !_manager.IsGameOver && _manager.MovesUsed == 0 &&
                        _manager.TutorialCell != null && _manager.Grid != null &&
                        _manager.Grid.grid != null;
 
         if (_banner != null)
-            _banner.gameObject.SetActive(!_manager.IsGameOver && _manager.MovesUsed == 0);
+            _banner.gameObject.SetActive(_manager.LevelIndex == 0 && !_manager.IsGameOver && _manager.MovesUsed == 0);
         if (_hand != null)
             _hand.gameObject.SetActive(guiding);
         if (!guiding || _hand == null)
@@ -95,8 +97,7 @@ public class PlayableAdController : MonoBehaviour
         bool shown = _endPanel.gameObject.activeInHierarchy;
         if (shown && !_endShown)
         {
-            _endShownTime = Time.time;
-            SetLabel(_installButton, _installLabel);
+            SetLabel(_installButton, _manager.AdvancesToNextLevel ? _nextLevelLabel : _installLabel);
             SetLabel(_retryButton, _retryLabel);
         }
         _endShown = shown;

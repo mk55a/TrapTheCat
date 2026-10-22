@@ -104,11 +104,11 @@ public class GridTile : MonoBehaviour
     {
         if (_spawnDelay > 0f)
         {
-            _spawnDelay -= Time.unscaledDeltaTime;
+            _spawnDelay -= Mathf.Min(Time.unscaledDeltaTime, 0.05f);
             return true;
         }
 
-        _spawnTime += Time.unscaledDeltaTime;
+        _spawnTime += Mathf.Min(Time.unscaledDeltaTime, 0.05f);
         float t = Mathf.Clamp01(_spawnTime / _spawnDuration);
         const float overshoot = 1.9f;
         float s = t - 1f;
@@ -139,7 +139,7 @@ public class GridTile : MonoBehaviour
         bool holding = _typeHold > 0f;
         if (holding)
         {
-            _typeHold -= Time.unscaledDeltaTime;
+            _typeHold -= Mathf.Min(Time.unscaledDeltaTime, 0.05f);
             if (_typeHold <= 0f)
                 holding = false;
         }

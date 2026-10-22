@@ -421,7 +421,7 @@ public class GameFlowUI : MonoBehaviour
         _ringFill.color = new Color(1f, 0.82f, 0.25f, 1f);
         _ringFill.type = Image.Type.Filled;
         _ringFill.fillMethod = Image.FillMethod.Radial360;
-        _ringFill.fillOrigin = (int)Image.Origin360.Top;
+        _ringFill.fillOrigin = 2; // Origin360.Top
         _ringFill.fillClockwise = true;
         _ringFill.raycastTarget = false;
         ((RectTransform)_ringFill.transform).anchorMin = Vector2.zero;
