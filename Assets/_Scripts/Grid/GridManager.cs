@@ -32,10 +32,16 @@ public class GridManager : MonoBehaviour
         get { return _boardShape; }
     }
 
-    private float HexRadius
-    {
-        get { return gridCellSize * 2f / 3f; }
-    }
+    // Layout follows the hex_tiles_sheet art: 30x32 px hexagon, interlocking rows 24 px apart.
+    // gridCellSize is the world width of one tile.
+    private const float ArtWidthPx = 30f;
+    private const float ArtHeightPx = 32f;
+    private const float RowPitchPx = 24f;
+
+    private float TileWidth { get { return gridCellSize; } }
+    private float TileHeight { get { return gridCellSize * ArtHeightPx / ArtWidthPx; } }
+    private float ColumnPitch { get { return gridCellSize * _tileSpacingMultiplier; } }
+    private float RowPitch { get { return gridCellSize * RowPitchPx / ArtWidthPx * _tileSpacingMultiplier; } }
 
     private void Awake()
     {
@@ -123,7 +129,7 @@ public class GridManager : MonoBehaviour
                 if (gridTile != null)
                 {
                     _tileObjects[x, y] = gridTile;
-                    gridTile.Initialize(grid.GetGridObject(x, y), HexRadius);
+                    gridTile.Initialize(grid.GetGridObject(x, y), TileWidth);
                     if (animate)
                     {
                         float ring = Vector3.Distance(GetCenterGridPosition(x, y), boardCenter) / maxDistance;
@@ -266,13 +272,11 @@ public class GridManager : MonoBehaviour
 
     public Vector3 GetCenterGridPosition(int x, int y)
     {
-        float radius = HexRadius;
-        float columnSpacing = Mathf.Sqrt(3f) * radius;
-        float rowOffset = (y & 1) == 1 ? columnSpacing * 0.5f : 0f;
+        float rowOffset = (y & 1) == 1 ? ColumnPitch * 0.5f : 0f;
         Vector3 origin = originObject.transform.position;
         return new Vector3(
-            origin.x + radius + x * columnSpacing * _tileSpacingMultiplier + rowOffset * _tileSpacingMultiplier,
-            origin.y + radius + y * gridCellSize * _tileSpacingMultiplier,
+            origin.x + TileWidth * 0.5f + x * ColumnPitch + rowOffset,
+            origin.y + TileHeight * 0.5f + y * RowPitch,
             origin.z);
     }
 
@@ -283,22 +287,18 @@ public class GridManager : MonoBehaviour
         if (grid == null)
             return false;
 
-        float radius = HexRadius;
-        float columnSpacing = Mathf.Sqrt(3f) * radius;
         Vector3 origin = originObject.transform.position;
-        float rowSpacing = gridCellSize * _tileSpacingMultiplier;
-        int approximateRow = Mathf.RoundToInt((worldPosition.y - origin.y - radius) / rowSpacing);
+        float halfWidth = TileWidth * 0.5f;
+        float halfHeight = TileHeight * 0.5f;
+        int approximateRow = Mathf.RoundToInt((worldPosition.y - origin.y - halfHeight) / RowPitch);
         float closestDistance = float.MaxValue;
         bool found = false;
 
         for (int candidateY = approximateRow - 1; candidateY <= approximateRow + 1; candidateY++)
         {
-            float rowOffset = (candidateY & 1) == 1
-                ? columnSpacing * 0.5f * _tileSpacingMultiplier
-                : 0f;
+            float rowOffset = (candidateY & 1) == 1 ? ColumnPitch * 0.5f : 0f;
             int approximateColumn = Mathf.RoundToInt(
-                (worldPosition.x - origin.x - radius - rowOffset) /
-                (columnSpacing * _tileSpacingMultiplier));
+                (worldPosition.x - origin.x - halfWidth - rowOffset) / ColumnPitch);
 
             for (int candidateX = approximateColumn - 1; candidateX <= approximateColumn + 1; candidateX++)
             {
@@ -308,10 +308,9 @@ public class GridManager : MonoBehaviour
                 Vector3 center = GetCenterGridPosition(candidateX, candidateY);
                 float dx = Mathf.Abs(worldPosition.x - center.x);
                 float dy = Mathf.Abs(worldPosition.y - center.y);
-                float halfWidth = columnSpacing * 0.5f;
                 bool insideHex = dx <= halfWidth &&
-                                 (dy <= radius * 0.5f ||
-                                  dx / halfWidth + 2f * dy / radius <= 2f);
+                                 (dy <= halfHeight * 0.5f ||
+                                  dx / halfWidth + 2f * dy / halfHeight <= 2f);
                 if (!insideHex)
                     continue;
 
@@ -420,15 +419,13 @@ public class GridManager : MonoBehaviour
             return;
         }
 
-        float radius = HexRadius;
-        float columnSpacing = Mathf.Sqrt(3f) * radius;
-        float horizontalSpacing = columnSpacing * _tileSpacingMultiplier;
-        float verticalSpacing = gridCellSize * _tileSpacingMultiplier;
+        float horizontalSpacing = ColumnPitch;
+        float verticalSpacing = RowPitch;
         float rightmostRowOffset = height > 1 ? horizontalSpacing * 0.5f : 0f;
-        float gridCenterX = radius + ((width - 1) * horizontalSpacing + rightmostRowOffset) * 0.5f;
-        float gridCenterY = radius + (height - 1) * verticalSpacing * 0.5f;
-        float boardWidth = (width - 1) * horizontalSpacing + rightmostRowOffset + 2f * radius;
-        float boardHeight = (height - 1) * verticalSpacing + 2f * radius;
+        float gridCenterX = TileWidth * 0.5f + ((width - 1) * horizontalSpacing + rightmostRowOffset) * 0.5f;
+        float gridCenterY = TileHeight * 0.5f + (height - 1) * verticalSpacing * 0.5f;
+        float boardWidth = (width - 1) * horizontalSpacing + rightmostRowOffset + TileWidth;
+        float boardHeight = (height - 1) * verticalSpacing + TileHeight;
         float visibleFraction = 1f - 2f * _cameraMargin;
         float safeAspect = Mathf.Max(0.01f, mainCamera.aspect);
         mainCamera.orthographicSize = Mathf.Max(

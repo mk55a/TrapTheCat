@@ -8,6 +8,10 @@ public class GridTile : MonoBehaviour
     [SerializeField] private float _clickAnimationDuration = 0.24f;
     [SerializeField] private float _animationSmoothing = 14f;
     [SerializeField] private float _spawnDuration = 0.4f;
+    [Tooltip("Width in pixels of the visible hexagon inside the sprite cell.")]
+    [SerializeField] private float _artPixelWidth = 30f;
+
+    private float ArtPixelWidth { get { return _artPixelWidth; } }
 
     private bool _spawning;
     private float _spawnDelay;
@@ -15,8 +19,17 @@ public class GridTile : MonoBehaviour
     private float _typeHold;
     private bool _pulseOnRelease;
 
-    private static Sprite _emptySprite;
-    private static Sprite _blockedSprite;
+    [Header("Sprites (leave empty to fall back to Resources/Art/Tiles_Sprites)")]
+    [SerializeField] private Sprite _emptySprite;
+    [SerializeField] private Sprite _blockedSprite;
+    [SerializeField] private Sprite _hoverSprite;
+    [SerializeField] private Sprite _pressedSprite;
+
+    private static Sprite _fallbackEmpty;
+    private static Sprite _fallbackBlocked;
+
+    private Sprite EmptySprite { get { return _emptySprite != null ? _emptySprite : _fallbackEmpty; } }
+    private Sprite BlockedSprite { get { return _blockedSprite != null ? _blockedSprite : _fallbackBlocked; } }
 
     private GridMapObject _gridObject;
     private SpriteRenderer _spriteRenderer;
@@ -33,21 +46,21 @@ public class GridTile : MonoBehaviour
         LoadSprites();
     }
 
-    public void Initialize(GridMapObject gridObject, float hexRadius)
+    public void Initialize(GridMapObject gridObject, float tileWidth)
     {
         _gridObject = gridObject;
         if (_spriteRenderer == null)
             _spriteRenderer = GetComponent<SpriteRenderer>();
 
         LoadSprites();
-        if (_emptySprite == null || _blockedSprite == null)
+        if (EmptySprite == null || BlockedSprite == null)
             return;
 
-        _spriteRenderer.sprite = _emptySprite;
+        _spriteRenderer.sprite = EmptySprite;
 
-        float spriteRadius = _spriteRenderer.sprite.bounds.extents.y;
-        if (spriteRadius > 0f)
-            transform.localScale = Vector3.one * (hexRadius / spriteRadius);
+        // Scale so the 30 px of art in the sprite spans tileWidth world units.
+        float artWorldWidth = ArtPixelWidth / _spriteRenderer.sprite.pixelsPerUnit;
+        transform.localScale = Vector3.one * (tileWidth / artWorldWidth);
 
         _baseScale = transform.localScale;
         _baseColor = _spriteRenderer.color;
@@ -66,7 +79,7 @@ public class GridTile : MonoBehaviour
         _lastType = GridType.Empty;
         _pulseOnRelease = true;
         if (_spriteRenderer != null)
-            _spriteRenderer.sprite = _emptySprite;
+            _spriteRenderer.sprite = EmptySprite;
     }
 
     public void SetHovered(bool isHovered)
@@ -141,14 +154,18 @@ public class GridTile : MonoBehaviour
                 PlayClickFeedback();
             }
             GridType type = _gridObject.GetCellType();
-            if (!_hasAppliedType || _lastType != type)
-            {
-                _lastType = type;
-                _hasAppliedType = true;
-                _spriteRenderer.sprite = type == GridType.Full || type == GridType.Obstacle
-                    ? _blockedSprite
-                    : _emptySprite;
-            }
+            _lastType = type;
+            _hasAppliedType = true;
+            bool blocked = type == GridType.Full || type == GridType.Obstacle;
+            Sprite desired = EmptySprite;
+            if (blocked)
+                desired = BlockedSprite;
+            else if (_clickAnimationTime > 0f && _pressedSprite != null)
+                desired = _pressedSprite;
+            else if (_isHovered && _hoverSprite != null)
+                desired = _hoverSprite;
+            if (desired != null && _spriteRenderer.sprite != desired)
+                _spriteRenderer.sprite = desired;
         }
 
         if (_spawning && UpdateSpawn())
@@ -207,19 +224,16 @@ public class GridTile : MonoBehaviour
 
     private static void LoadSprites()
     {
-        if (_emptySprite != null && _blockedSprite != null)
+        if (_fallbackEmpty != null && _fallbackBlocked != null)
             return;
 
         Sprite[] sprites = Resources.LoadAll<Sprite>("Art/Tiles_Sprites");
         foreach (Sprite sprite in sprites)
         {
             if (sprite.name == "Tiles_Sprites_0")
-                _emptySprite = sprite;
+                _fallbackEmpty = sprite;
             else if (sprite.name == "Tiles_Sprites_1")
-                _blockedSprite = sprite;
+                _fallbackBlocked = sprite;
         }
-
-        if (_emptySprite == null || _blockedSprite == null)
-            Debug.LogError("Tiles_Sprites must contain Tiles_Sprites_0 (empty) and Tiles_Sprites_1 (blocked).");
     }
 }
