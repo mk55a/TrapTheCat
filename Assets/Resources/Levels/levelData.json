@@ -147,6 +147,196 @@
                 }
             ],
             "tutorialSteps": []
+        },
+        {
+            "formatVersion": 1,
+            "levelId": "custom-level-5",
+            "displayName": "Level 5",
+            "progressionOrder": 1005,
+            "customLevelNumber": 5,
+            "boardShape": "Circle",
+            "width": 16,
+            "height": 16,
+            "hasCatStart": true,
+            "catStart": {
+                "x": 7,
+                "y": 7
+            },
+            "catDifficulty": "Normal",
+            "blockedCells": [
+                {
+                    "x": 13,
+                    "y": 8
+                },
+                {
+                    "x": 2,
+                    "y": 5
+                },
+                {
+                    "x": 10,
+                    "y": 13
+                },
+                {
+                    "x": 11,
+                    "y": 6
+                },
+                {
+                    "x": 3,
+                    "y": 4
+                },
+                {
+                    "x": 3,
+                    "y": 8
+                },
+                {
+                    "x": 12,
+                    "y": 12
+                },
+                {
+                    "x": 10,
+                    "y": 1
+                },
+                {
+                    "x": 14,
+                    "y": 5
+                },
+                {
+                    "x": 1,
+                    "y": 9
+                },
+                {
+                    "x": 2,
+                    "y": 8
+                },
+                {
+                    "x": 7,
+                    "y": 5
+                },
+                {
+                    "x": 12,
+                    "y": 5
+                },
+                {
+                    "x": 10,
+                    "y": 6
+                },
+                {
+                    "x": 1,
+                    "y": 7
+                },
+                {
+                    "x": 13,
+                    "y": 9
+                },
+                {
+                    "x": 12,
+                    "y": 7
+                },
+                {
+                    "x": 12,
+                    "y": 10
+                },
+                {
+                    "x": 2,
+                    "y": 11
+                },
+                {
+                    "x": 8,
+                    "y": 7
+                },
+                {
+                    "x": 2,
+                    "y": 12
+                },
+                {
+                    "x": 8,
+                    "y": 12
+                },
+                {
+                    "x": 14,
+                    "y": 8
+                },
+                {
+                    "x": 14,
+                    "y": 11
+                },
+                {
+                    "x": 8,
+                    "y": 6
+                },
+                {
+                    "x": 5,
+                    "y": 6
+                },
+                {
+                    "x": 3,
+                    "y": 6
+                },
+                {
+                    "x": 7,
+                    "y": 8
+                }
+            ],
+            "tutorialSteps": []
+        },
+        {
+            "formatVersion": 1,
+            "levelId": "custom-level-7",
+            "displayName": "Level 7",
+            "progressionOrder": 1007,
+            "customLevelNumber": 7,
+            "boardShape": "Circle",
+            "width": 10,
+            "height": 10,
+            "hasCatStart": true,
+            "catStart": {
+                "x": 4,
+                "y": 4
+            },
+            "catDifficulty": "Normal",
+            "blockedCells": [
+                {
+                    "x": 4,
+                    "y": 7
+                },
+                {
+                    "x": 7,
+                    "y": 1
+                },
+                {
+                    "x": 8,
+                    "y": 2
+                },
+                {
+                    "x": 2,
+                    "y": 4
+                },
+                {
+                    "x": 4,
+                    "y": 2
+                },
+                {
+                    "x": 6,
+                    "y": 8
+                },
+                {
+                    "x": 6,
+                    "y": 3
+                },
+                {
+                    "x": 3,
+                    "y": 6
+                },
+                {
+                    "x": 5,
+                    "y": 6
+                },
+                {
+                    "x": 4,
+                    "y": 5
+                }
+            ],
+            "tutorialSteps": []
         }
     ]
 }

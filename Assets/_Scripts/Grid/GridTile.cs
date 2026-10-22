@@ -7,8 +7,26 @@ public class GridTile : MonoBehaviour
     [SerializeField] private Color _clickFlashColor = new Color(1f, 0.78f, 0.36f, 1f);
     [SerializeField] private float _clickAnimationDuration = 0.24f;
     [SerializeField] private float _animationSmoothing = 14f;
+    [SerializeField] private float _spawnDuration = 0.4f;
+    [Tooltip("Width in pixels of the visible hexagon inside the sprite cell.")]
+    [SerializeField] private float _artPixelWidth = 30f;
+
+    private float ArtPixelWidth { get { return _artPixelWidth; } }
+
+    private bool _spawning;
+    private float _spawnDelay;
+    private float _spawnTime;
+    private float _typeHold;
+    private bool _pulseOnRelease;
+
+    [Header("Sprites")]
     [SerializeField] private Sprite _emptySprite;
     [SerializeField] private Sprite _blockedSprite;
+    [SerializeField] private Sprite _hoverSprite;
+    [SerializeField] private Sprite _pressedSprite;
+
+    private Sprite EmptySprite { get { return _emptySprite; } }
+    private Sprite BlockedSprite { get { return _blockedSprite; } }
 
     private GridMapObject _gridObject;
     private SpriteRenderer _spriteRenderer;
@@ -24,23 +42,23 @@ public class GridTile : MonoBehaviour
         _spriteRenderer = GetComponent<SpriteRenderer>();
     }
 
-    public void Initialize(GridMapObject gridObject, float hexRadius)
+    public void Initialize(GridMapObject gridObject, float tileWidth)
     {
         _gridObject = gridObject;
         if (_spriteRenderer == null)
             _spriteRenderer = GetComponent<SpriteRenderer>();
 
-        if (_emptySprite == null || _blockedSprite == null)
+        if (EmptySprite == null || BlockedSprite == null)
         {
             Debug.LogError("GridTile requires assigned empty and blocked sprites.", this);
             return;
         }
 
-        _spriteRenderer.sprite = _emptySprite;
+        _spriteRenderer.sprite = EmptySprite;
 
-        float spriteRadius = _spriteRenderer.sprite.bounds.extents.y;
-        if (spriteRadius > 0f)
-            transform.localScale = Vector3.one * (hexRadius / spriteRadius);
+        // Scale so the 30 px of art in the sprite spans tileWidth world units.
+        float artWorldWidth = ArtPixelWidth / _spriteRenderer.sprite.pixelsPerUnit;
+        transform.localScale = Vector3.one * (tileWidth / artWorldWidth);
 
         _baseScale = transform.localScale;
         _baseColor = _spriteRenderer.color;
@@ -50,9 +68,62 @@ public class GridTile : MonoBehaviour
         _lastType = GridType.Empty;
     }
 
+    // Keeps showing the empty sprite for a while even if the cell is already blocked,
+    // then pops the blocked sprite in with a click pulse.
+    public void HoldVisualType(float seconds)
+    {
+        _typeHold = Mathf.Max(0f, seconds);
+        _hasAppliedType = false;
+        _lastType = GridType.Empty;
+        _pulseOnRelease = true;
+        if (_spriteRenderer != null)
+            _spriteRenderer.sprite = EmptySprite;
+    }
+
     public void SetHovered(bool isHovered)
     {
         _isHovered = isHovered;
+    }
+
+    // Hides the tile until the delay passes, then pops it in with a small overshoot.
+    public void PlaySpawn(float delay)
+    {
+        if (_spriteRenderer == null)
+            return;
+
+        _spawning = true;
+        _spawnDelay = Mathf.Max(0f, delay);
+        _spawnTime = 0f;
+        transform.localScale = Vector3.zero;
+        Color hidden = _baseColor;
+        hidden.a = 0f;
+        _spriteRenderer.color = hidden;
+    }
+
+    private bool UpdateSpawn()
+    {
+        if (_spawnDelay > 0f)
+        {
+            _spawnDelay -= Time.unscaledDeltaTime;
+            return true;
+        }
+
+        _spawnTime += Time.unscaledDeltaTime;
+        float t = Mathf.Clamp01(_spawnTime / _spawnDuration);
+        const float overshoot = 1.9f;
+        float s = t - 1f;
+        float eased = 1f + (overshoot + 1f) * s * s * s + overshoot * s * s;
+        transform.localScale = _baseScale * Mathf.Max(0f, eased);
+        Color color = _baseColor;
+        color.a = Mathf.Clamp01(t * 2.5f);
+        _spriteRenderer.color = color;
+        if (t >= 1f)
+        {
+            _spawning = false;
+            transform.localScale = _baseScale;
+            _spriteRenderer.color = _baseColor;
+        }
+        return _spawning;
     }
 
     public void PlayClickFeedback()
@@ -65,18 +136,38 @@ public class GridTile : MonoBehaviour
         if (_spriteRenderer == null)
             return;
 
-        if (_gridObject != null)
+        bool holding = _typeHold > 0f;
+        if (holding)
         {
-            GridType type = _gridObject.GetCellType();
-            if (!_hasAppliedType || _lastType != type)
-            {
-                _lastType = type;
-                _hasAppliedType = true;
-                _spriteRenderer.sprite = type == GridType.Full || type == GridType.Obstacle
-                    ? _blockedSprite
-                    : _emptySprite;
-            }
+            _typeHold -= Time.unscaledDeltaTime;
+            if (_typeHold <= 0f)
+                holding = false;
         }
+
+        if (_gridObject != null && !holding)
+        {
+            if (_pulseOnRelease)
+            {
+                _pulseOnRelease = false;
+                PlayClickFeedback();
+            }
+            GridType type = _gridObject.GetCellType();
+            _lastType = type;
+            _hasAppliedType = true;
+            bool blocked = type == GridType.Full || type == GridType.Obstacle;
+            Sprite desired = EmptySprite;
+            if (blocked)
+                desired = BlockedSprite;
+            else if (_clickAnimationTime > 0f && _pressedSprite != null)
+                desired = _pressedSprite;
+            else if (_isHovered && _hoverSprite != null)
+                desired = _hoverSprite;
+            if (desired != null && _spriteRenderer.sprite != desired)
+                _spriteRenderer.sprite = desired;
+        }
+
+        if (_spawning && UpdateSpawn())
+            return;
 
         float clickPulse = 0f;
         float clickScaleX = 1f;

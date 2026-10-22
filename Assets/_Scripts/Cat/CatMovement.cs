@@ -9,7 +9,6 @@ public class CatMovement : MonoBehaviour
     public static event Action OnCatEscaped;
 
     public List<Vector3> pathVectorList;
-    public Pathfinding pathfinding;
 
     [SerializeField] private float _speed = 2.5f;
     [SerializeField] private CatDifficulty _difficulty = CatDifficulty.Normal;
@@ -18,11 +17,17 @@ public class CatMovement : MonoBehaviour
     private GridManager _gridManager;
     private LineRenderer _lineRenderer;
     private CatSpriteAnimator _spriteAnimator;
+    private CatBrain _brain;
     private bool _isMoving;
 
     public CatDifficulty Difficulty
     {
         get { return _difficulty; }
+    }
+
+    private CatBrain Brain
+    {
+        get { return _brain ?? (_brain = new CatBrain(_difficulty)); }
     }
 
     private void Awake()
@@ -31,7 +36,6 @@ public class CatMovement : MonoBehaviour
         _gridManager = GridManager.Instance;
         _lineRenderer = GetComponent<LineRenderer>();
         _spriteAnimator = GetComponent<CatSpriteAnimator>();
-        RefreshPathfinding();
     }
 
     private void Update()
@@ -43,10 +47,7 @@ public class CatMovement : MonoBehaviour
     public void RefreshPathfinding()
     {
         _gridManager = GridManager.Instance;
-        if (_gridManager != null)
-        {
-            pathfinding = new Pathfinding(_gridManager.width, _gridManager.height);
-        }
+        Brain.Reset();
     }
 
     public void ResetMovement()
@@ -54,6 +55,7 @@ public class CatMovement : MonoBehaviour
         StopAllCoroutines();
         _isMoving = false;
         pathVectorList = null;
+        Brain.Reset();
         if (_spriteAnimator != null)
             _spriteAnimator.PlayIdle();
         if (_lineRenderer != null)
@@ -63,11 +65,12 @@ public class CatMovement : MonoBehaviour
     public void SetDifficulty(CatDifficulty difficulty)
     {
         _difficulty = difficulty;
+        _brain = new CatBrain(difficulty);
     }
 
     private void TakeCatTurn()
     {
-        if (_gridManager == null || _gridManager.grid == null || pathfinding == null)
+        if (_gridManager == null || _gridManager.grid == null)
             return;
 
         if (!_gridManager.TryGetGridCoordinates(transform.position, out int catX, out int catY))
@@ -76,8 +79,11 @@ public class CatMovement : MonoBehaviour
             OnCatTrapped?.Invoke();
             return;
         }
-        List<PathNode> path = FindClosestBoundaryPath(catX, catY);
-        if (path == null || path.Count < 2)
+
+        CatBoard board = _gridManager.CreateCatBoard();
+        int catIndex = board.Index(catX, catY);
+        int nextIndex = Brain.ChooseMove(board, catIndex);
+        if (nextIndex < 0)
         {
             _cat.SetCanMove(false);
             OnCatTrapped?.Invoke();
@@ -85,61 +91,29 @@ public class CatMovement : MonoBehaviour
         }
 
         pathVectorList = new List<Vector3>();
-        for (int i = 1; i < path.Count; i++)
-            pathVectorList.Add(_gridManager.GetCenterGridPosition(path[i].x, path[i].y));
+        foreach (int index in board.BuildRouteToNearestExit(nextIndex))
+        {
+            Vector2Int cell = board.Cell(index);
+            pathVectorList.Add(_gridManager.GetCenterGridPosition(cell.x, cell.y));
+        }
+        if (pathVectorList.Count == 0)
+        {
+            Vector2Int nextCell = board.Cell(nextIndex);
+            pathVectorList.Add(_gridManager.GetCenterGridPosition(nextCell.x, nextCell.y));
+        }
         UpdateLineRenderer();
 
-        PathNode nextNode = path[1];
-        Vector3 direction = _gridManager.GetCenterGridPosition(nextNode.x, nextNode.y) - transform.position;
+        Vector2Int next = board.Cell(nextIndex);
+        Vector3 direction = _gridManager.GetCenterGridPosition(next.x, next.y) - transform.position;
         _spriteAnimator?.SetFacing(direction);
-        bool escaping = _gridManager.IsPerimeterCell(nextNode.x, nextNode.y);
+        bool escaping = _gridManager.IsPerimeterCell(next.x, next.y);
         _spriteAnimator?.PlayMovement(escaping);
         _isMoving = true;
         StartCoroutine(MoveOneCell(
-            _gridManager.GetCenterGridPosition(nextNode.x, nextNode.y),
-            nextNode.x,
-            nextNode.y,
+            _gridManager.GetCenterGridPosition(next.x, next.y),
+            next.x,
+            next.y,
             escaping));
-    }
-
-    private List<PathNode> FindClosestBoundaryPath(int catX, int catY)
-    {
-        List<PathNode> closestPath = null;
-        int bestCost = int.MaxValue;
-        int blockedAdjacencyPenalty = GetBlockedAdjacencyPenalty();
-        foreach (Coordinates coordinate in _gridManager.GetBoundaryCoordinates())
-        {
-            GridMapObject cell = _gridManager.grid.GetGridObject(coordinate.X, coordinate.Y);
-            if (cell == null || cell.GetCellType() != GridType.Boundary)
-                continue;
-
-            List<PathNode> path = pathfinding.FindPath(
-                catX,
-                catY,
-                coordinate.X,
-                coordinate.Y,
-                blockedAdjacencyPenalty);
-            int routeCost = pathfinding.CalculateRouteCost(path, blockedAdjacencyPenalty);
-            if (path != null && routeCost < bestCost)
-            {
-                closestPath = path;
-                bestCost = routeCost;
-            }
-        }
-        return closestPath;
-    }
-
-    private int GetBlockedAdjacencyPenalty()
-    {
-        switch (_difficulty)
-        {
-            case CatDifficulty.Normal:
-                return 4;
-            case CatDifficulty.Hard:
-                return 10;
-            default:
-                return 0;
-        }
     }
 
     private IEnumerator MoveOneCell(

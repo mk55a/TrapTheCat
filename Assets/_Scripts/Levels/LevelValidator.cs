@@ -105,6 +105,75 @@ public static class LevelValidator
             reachableExits);
     }
 
+    // Structural validation plus a solver pass: the level is only valid if the player can force a trap
+    // against the level's own cat difficulty.
+    public static LevelValidationResult ValidateWinnable(
+        LevelData level,
+        int nodeBudget = 400000,
+        long timeBudgetMs = 4000)
+    {
+        LevelValidationResult structural = Validate(level);
+        if (!structural.IsValid)
+            return structural;
+
+        string signature = BuildSignature(level);
+        if (_winnableCache.TryGetValue(signature, out LevelValidationResult cached))
+            return cached;
+
+        bool[,] activeCells = BoardTopology.BuildMask(level.width, level.height, level.boardShape);
+        PuzzleSolution solution = CatPuzzleSolver.Solve(
+            activeCells,
+            level.blockedCells,
+            level.catStart,
+            level.catDifficulty,
+            8,
+            10,
+            nodeBudget,
+            timeBudgetMs);
+
+        LevelValidationResult result;
+        if (solution.Winnable)
+        {
+            string estimate = solution.WinningFirstMoves >= 6 ? "Low"
+                : solution.WinningFirstMoves >= 2 ? "Medium" : "High";
+            result = new LevelValidationResult(
+                true,
+                $"Winnable in {solution.MinPlayerMoves} move(s); {solution.WinningFirstMoves} of " +
+                $"{solution.FirstMoveOptions} opening blocks work.",
+                estimate,
+                structural.ShortestEscapeSteps,
+                structural.ReachableExits);
+        }
+        else
+        {
+            string reason = solution.Inconclusive
+                ? "Could not prove this level is winnable in time. Block more tiles or simplify it."
+                : $"The {level.catDifficulty} cat cannot be trapped. Add blocked tiles or lower the difficulty.";
+            result = Invalid(reason);
+        }
+
+        if (!solution.Inconclusive)
+            _winnableCache[signature] = result;
+        return result;
+    }
+
+    private static readonly Dictionary<string, LevelValidationResult> _winnableCache =
+        new Dictionary<string, LevelValidationResult>();
+
+    private static string BuildSignature(LevelData level)
+    {
+        List<Vector2Int> cells = new List<Vector2Int>(level.blockedCells);
+        cells.Sort((a, b) => a.x != b.x ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
+        System.Text.StringBuilder builder = new System.Text.StringBuilder();
+        builder.Append(level.width).Append('x').Append(level.height)
+            .Append('|').Append((int)level.boardShape)
+            .Append('|').Append((int)level.catDifficulty)
+            .Append('|').Append(level.catStart.x).Append(',').Append(level.catStart.y);
+        foreach (Vector2Int cell in cells)
+            builder.Append('|').Append(cell.x).Append(',').Append(cell.y);
+        return builder.ToString();
+    }
+
     private static bool TryMeasureEscapeRoutes(
         bool[,] activeCells,
         HashSet<Vector2Int> blocked,

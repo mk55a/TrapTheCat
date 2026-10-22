@@ -75,7 +75,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 100
-  m_Sprite: {fileID: 852672169, guid: e62b24b7b2ebcd941bc3335147666758, type: 3}
+  m_Sprite: {fileID: -1089544793, guid: 780cffd63a532db4bb75296321a43cbf, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -142,5 +142,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7752ec7c66f35ac4d8d3e13a949ed4fe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _emptySprite: {fileID: 852672169, guid: e62b24b7b2ebcd941bc3335147666758, type: 3}
-  _blockedSprite: {fileID: 1943856943, guid: e62b24b7b2ebcd941bc3335147666758, type: 3}
+  _hoverScaleMultiplier: 1.06
+  _hoverColor: {r: 1, g: 1, b: 0.82, a: 1}
+  _clickFlashColor: {r: 1, g: 0.78, b: 0.36, a: 1}
+  _clickAnimationDuration: 0.24
+  _animationSmoothing: 14
+  _spawnDuration: 0.4
+  _emptySprite: {fileID: -1089544793, guid: 780cffd63a532db4bb75296321a43cbf, type: 3}
+  _blockedSprite: {fileID: -31705349, guid: 780cffd63a532db4bb75296321a43cbf, type: 3}
+  _hoverSprite: {fileID: -1178896095, guid: 780cffd63a532db4bb75296321a43cbf, type: 3}
+  _pressedSprite: {fileID: -132523773, guid: 780cffd63a532db4bb75296321a43cbf, type: 3}
