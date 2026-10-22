@@ -66,6 +66,9 @@ public class LevelLoader
 
     private IEnumerator RevealCat(float delay)
     {
+        CatSpriteAnimator animator = _cat.GetComponent<CatSpriteAnimator>();
+        if (animator != null)
+            animator.WakeAfter(delay + 1f);
         Renderer[] renderers = _cat.GetComponentsInChildren<Renderer>();
         foreach (Renderer r in renderers)
             r.enabled = false;

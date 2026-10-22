@@ -1842,7 +1842,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 350, y: -445.12}
+  m_AnchoredPosition: {x: 350, y: -493.14996}
   m_SizeDelta: {x: 380, y: 92}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &194909678
@@ -2727,7 +2727,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 350, y: -541.18}
+  m_AnchoredPosition: {x: 350, y: -613.225}
   m_SizeDelta: {x: 380, y: 92}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &260471492
@@ -3176,8 +3176,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: a0d577db41613af4da7f6e83be5c89d4, type: 3}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: 7a8474481d13ab945a3b61a64deeba43, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -3185,7 +3185,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  m_PixelsPerUnitMultiplier: 0.33
 --- !u!222 &289452471
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3214,7 +3214,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &324540151
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4034,15 +4034,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.9921569, g: 0.9843138, b: 0.8470589, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: dd036888fd77bc44190fd36d9d7593a8, type: 3}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: 3299e27304eabfb489fe475127e96c1c, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -4050,7 +4050,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  m_PixelsPerUnitMultiplier: 0.33
 --- !u!222 &417901875
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -5220,6 +5220,7 @@ GameObject:
   m_Component:
   - component: {fileID: 823751449}
   - component: {fileID: 823751450}
+  - component: {fileID: 823751451}
   m_Layer: 0
   m_Name: CatSprite
   m_TagString: Untagged
@@ -5237,7 +5238,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 7.5, y: 7.5, z: 7.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1888252282}
@@ -5283,7 +5284,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 109
-  m_Sprite: {fileID: 29325209, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
+  m_Sprite: {fileID: -1451467370, guid: 38b14e96da249f04dbc955a645252e20, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -5294,6 +5295,27 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!95 &823751451
+Animator:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 823751448}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: b9eb9061c0eac144a99929327cdc361f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &830821632
 GameObject:
   m_ObjectHideFlags: 0
@@ -5948,8 +5970,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 61f626fd7ed1c4a45bbbb4cb109fac6e, type: 3}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: 688ee58e1451bcb48a3625dd9f6b12ac, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -5957,7 +5979,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  m_PixelsPerUnitMultiplier: 0.33
 --- !u!222 &953645865
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -6000,7 +6022,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 350, y: -345.06}
+  m_AnchoredPosition: {x: 350, y: -369.07498}
   m_SizeDelta: {x: 700, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &977138645
@@ -7403,15 +7425,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.24, g: 0.47, b: 0.62, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 124e27bc2f00800479375dc5999490da, type: 3}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: 928cd8682e7ea124f8d29ce935117efb, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -7419,7 +7441,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  m_PixelsPerUnitMultiplier: 0.33
 --- !u!222 &1228900966
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -9199,15 +9221,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.9921569, g: 0.9843138, b: 0.8470589, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: b2b9891823c286e4db7a5dc4d52c7393, type: 3}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: 3299e27304eabfb489fe475127e96c1c, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -9215,7 +9237,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  m_PixelsPerUnitMultiplier: 0.33
 --- !u!222 &1594961657
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -9531,8 +9553,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: DELETE ALL CUSTOM LEVELS?
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 2946ea8fcf094b14aabc93b5378720da, type: 2}
+  m_sharedMaterial: {fileID: 1019882658248453782, guid: 2946ea8fcf094b14aabc93b5378720da, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -11481,54 +11503,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _spriteRenderer: {fileID: 823751450}
-  _idleFrames:
-  - {fileID: 29325209, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
-  - {fileID: -352063176, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
-  - {fileID: 1177631573, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
-  - {fileID: 2063199748, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
-  - {fileID: -624807298, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
-  - {fileID: -722502699, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
-  - {fileID: -731346573, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
-  - {fileID: 1100012389, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
-  - {fileID: -858968663, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
-  - {fileID: -2096875981, guid: c8f0e7e1d76fe1c409039ade1ac6c99c, type: 3}
-  _walkFrames:
-  - {fileID: -254169148, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
-  - {fileID: -728125083, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
-  - {fileID: 1683229, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
-  - {fileID: -1670600875, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
-  - {fileID: 1951145244, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
-  - {fileID: 100297296, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
-  - {fileID: -1505254436, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
-  - {fileID: -748725566, guid: 48f786bb3656d214ea5f0da794936c33, type: 3}
-  _runFrames:
-  - {fileID: -1689444797, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
-  - {fileID: 587833758, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
-  - {fileID: -1375625415, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
-  - {fileID: -1021212030, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
-  - {fileID: -1550280241, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
-  - {fileID: -719394768, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
-  - {fileID: -659371257, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
-  - {fileID: -1653465737, guid: 98f7b2ab72126f044b2da2e5cd2e43af, type: 3}
-  _layingFrames:
-  - {fileID: -1382115465, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
-  - {fileID: -820635256, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
-  - {fileID: -1571689326, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
-  - {fileID: -345083790, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
-  - {fileID: -1940853953, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
-  - {fileID: 1432530257, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
-  - {fileID: 1223987923, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
-  - {fileID: 1750684531, guid: e95e0487b3b9dc744a33314e8ab4a312, type: 3}
-  _meowFrames:
-  - {fileID: -540195419, guid: 922936d3e15297e42b9c19a8d40e7662, type: 3}
-  - {fileID: -2008888176, guid: 922936d3e15297e42b9c19a8d40e7662, type: 3}
-  - {fileID: -107870544, guid: 922936d3e15297e42b9c19a8d40e7662, type: 3}
-  - {fileID: 36880153, guid: 922936d3e15297e42b9c19a8d40e7662, type: 3}
-  _sittingFrame: {fileID: 256048711, guid: 4282a1e20e673d943a10aa8a0fdf40fc, type: 3}
-  _idleFrameRate: 6
-  _walkFrameRate: 10
-  _runFrameRate: 12
-  _reactionFrameRate: 8
+  _animator: {fileID: 0}
+  _meowAfterSeconds: 15
+  _lickAfterSeconds: 25
+  _defaultSleepSeconds: 1.5
 --- !u!1 &1893309297
 GameObject:
   m_ObjectHideFlags: 0
@@ -11673,8 +11651,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 61f626fd7ed1c4a45bbbb4cb109fac6e, type: 3}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: 688ee58e1451bcb48a3625dd9f6b12ac, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -11682,7 +11660,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  m_PixelsPerUnitMultiplier: 0.33
 --- !u!222 &1893309303
 CanvasRenderer:
   m_ObjectHideFlags: 0

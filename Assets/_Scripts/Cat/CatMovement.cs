@@ -57,7 +57,7 @@ public class CatMovement : MonoBehaviour
         pathVectorList = null;
         Brain.Reset();
         if (_spriteAnimator != null)
-            _spriteAnimator.PlayIdle();
+            _spriteAnimator.PlaySleeping();
         if (_lineRenderer != null)
             _lineRenderer.positionCount = 0;
     }

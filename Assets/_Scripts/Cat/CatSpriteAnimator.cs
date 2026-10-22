@@ -1,166 +1,202 @@
 using UnityEngine;
 
+// Drives Cat.controller. The controller owns the fixed chains (Sleeping -> Sitting -> Idle,
+// Licking/Meow -> Idle); this script decides when to wake, walk, run, lick and meow.
 public class CatSpriteAnimator : MonoBehaviour
 {
-    [SerializeField] private SpriteRenderer _spriteRenderer;
-    [SerializeField] private Sprite[] _idleFrames;
-    [SerializeField] private Sprite[] _walkFrames;
-    [SerializeField] private Sprite[] _runFrames;
-    [SerializeField] private Sprite[] _layingFrames;
-    [SerializeField] private Sprite[] _meowFrames;
-    [SerializeField] private Sprite _sittingFrame;
-    [SerializeField, Min(1f)] private float _idleFrameRate = 6f;
-    [SerializeField, Min(1f)] private float _walkFrameRate = 10f;
-    [SerializeField, Min(1f)] private float _runFrameRate = 12f;
-    [SerializeField, Min(1f)] private float _reactionFrameRate = 8f;
+    private static readonly int WalkingParam = Animator.StringToHash("Walking");
+    private static readonly int RunningParam = Animator.StringToHash("Running");
+    private static readonly int WakeParam = Animator.StringToHash("Wake");
+    private static readonly int LickParam = Animator.StringToHash("Lick");
+    private static readonly int MeowParam = Animator.StringToHash("Meow");
+    private static readonly int TrappedParam = Animator.StringToHash("Trapped");
+    private static readonly int SleepingState = Animator.StringToHash("Sleeping");
+    private static readonly int IdleState = Animator.StringToHash("Idle");
 
-    private Sprite[] _activeFrames;
-    private float _activeFrameRate;
-    private float _frameTimer;
-    private int _frameIndex;
-    private bool _loop;
-    private bool _isPlaying;
-    private bool _playTrappedSequence;
-    private bool _playingMeow;
+    [SerializeField] private SpriteRenderer _spriteRenderer;
+    [SerializeField] private Animator _animator;
+    [Header("Idle behaviour")]
+    [SerializeField, Min(1f)] private float _meowAfterSeconds = 15f;
+    [Tooltip("After this long without a player move the cat licks until the player moves.")]
+    [SerializeField, Min(1f)] private float _lickAfterSeconds = 25f;
+    [Tooltip("Wakes the cat on its own if nothing calls WakeAfter (for scenes without a reveal).")]
+    [SerializeField, Min(0f)] private float _defaultSleepSeconds = 1.5f;
+
+    private float _waitTimer;
+    private bool _licking;
+    private bool _meowed;
+    private float _wakeCountdown = -1f;
+    private bool _behaviourActive;
 
     private void Awake()
     {
+        if (_animator == null)
+            _animator = GetComponentInChildren<Animator>();
         if (_spriteRenderer == null)
             _spriteRenderer = GetComponentInChildren<SpriteRenderer>();
 
-        if (_spriteRenderer == null)
+        if (_animator == null || _spriteRenderer == null)
         {
-            Debug.LogError("CatSpriteAnimator requires a SpriteRenderer.", this);
+            Debug.LogError("CatSpriteAnimator requires an Animator (Cat.controller) and a SpriteRenderer.", this);
             enabled = false;
-            return;
         }
+    }
 
-        if (_idleFrames == null || _idleFrames.Length == 0 ||
-            _walkFrames == null || _walkFrames.Length == 0 ||
-            _runFrames == null || _runFrames.Length == 0 ||
-            _layingFrames == null || _layingFrames.Length == 0 ||
-            _meowFrames == null || _meowFrames.Length == 0 ||
-            _sittingFrame == null)
-        {
-            Debug.LogError("CatSpriteAnimator is missing one or more Cat-2 animation frames.", this);
-            enabled = false;
-            return;
-        }
+    private void OnEnable()
+    {
+        GameManager.OnTurnChanged += HandleTurnChanged;
+    }
 
-        PlayIdle();
+    private void OnDisable()
+    {
+        GameManager.OnTurnChanged -= HandleTurnChanged;
+    }
+
+    private void Start()
+    {
+        PlaySleeping();
     }
 
     private void Update()
     {
-        if (!_isPlaying || _activeFrames == null || _activeFrames.Length == 0)
+        if (_wakeCountdown >= 0f)
+        {
+            _wakeCountdown -= Time.deltaTime;
+            if (_wakeCountdown < 0f)
+                Wake();
+        }
+
+        if (!_behaviourActive)
             return;
 
-        _frameTimer += Time.deltaTime;
-        float frameDuration = 1f / _activeFrameRate;
-        while (_frameTimer >= frameDuration)
+        bool playerTurn = GameManager.Instance != null &&
+                          GameManager.Instance.GetCurrentTurn() == Turn.Player;
+        if (!playerTurn)
+            return;
+
+        _waitTimer += Time.deltaTime;
+        if (_licking)
+            return;
+
+        if (_waitTimer >= _lickAfterSeconds)
         {
-            _frameTimer -= frameDuration;
-            if (_frameIndex + 1 < _activeFrames.Length)
-            {
-                _frameIndex++;
-                SetCurrentSprite();
-            }
-            else if (_loop)
-            {
-                _frameIndex = 0;
-                SetCurrentSprite();
-            }
-            else
-            {
-                FinishOneShot();
-                break;
-            }
+            _licking = true;
+            _animator.SetBool(LickParam, true);
         }
+        else if (!_meowed && _waitTimer >= _meowAfterSeconds && IsIdle())
+        {
+            _meowed = true;
+            _animator.SetTrigger(MeowParam);
+        }
+    }
+
+    public void PlaySleeping()
+    {
+        if (!CanAnimate())
+            return;
+
+        ResetParameters();
+        _animator.speed = 1f;
+        _animator.Play(SleepingState, 0, 0f);
+        _behaviourActive = false;
+        _wakeCountdown = _defaultSleepSeconds;
+    }
+
+    public void WakeAfter(float seconds)
+    {
+        _wakeCountdown = Mathf.Max(0f, seconds);
+    }
+
+    public void Wake()
+    {
+        if (!CanAnimate())
+            return;
+
+        _wakeCountdown = -1f;
+        _animator.SetTrigger(WakeParam);
+        _behaviourActive = true;
+        ResetWaiting();
     }
 
     public void PlayIdle()
     {
-        _playTrappedSequence = false;
-        Play(_idleFrames, _idleFrameRate, true);
+        if (!CanAnimate())
+            return;
+
+        _animator.SetBool(WalkingParam, false);
+        _animator.SetBool(RunningParam, false);
     }
 
     public void PlayMovement(bool escaping)
     {
-        _playTrappedSequence = false;
-        Play(escaping ? _runFrames : _walkFrames,
-            escaping ? _runFrameRate : _walkFrameRate,
-            true);
+        if (!CanAnimate())
+            return;
+
+        ResetWaiting();
+        _animator.SetBool(WalkingParam, true);
+        _animator.SetBool(RunningParam, escaping);
     }
 
     public void PlayTrappedReaction()
     {
-        _playTrappedSequence = true;
-        _playingMeow = false;
-        Play(_layingFrames, _reactionFrameRate, false);
+        if (!CanAnimate())
+            return;
+
+        _behaviourActive = false;
+        ResetWaiting();
+        PlayIdle();
+        _animator.SetTrigger(TrappedParam);
     }
 
     public void SetFacing(Vector3 movement)
     {
         if (_spriteRenderer != null && Mathf.Abs(movement.x) > 0.0001f)
-        {
             _spriteRenderer.flipX = movement.x < 0f;
-            SetCurrentSprite();
-        }
     }
 
     public void HoldCurrentFrame()
     {
-        _isPlaying = false;
-        _loop = false;
+        _behaviourActive = false;
+        if (_animator != null)
+            _animator.speed = 0f;
     }
 
-    private void Play(Sprite[] frames, float frameRate, bool loop)
+    // Any turn change means a move was made: stop licking and restart the wait.
+    private void HandleTurnChanged()
     {
-        if (!enabled || frames == null || frames.Length == 0)
-            return;
-
-        _activeFrames = frames;
-        _activeFrameRate = Mathf.Max(1f, frameRate);
-        _frameTimer = 0f;
-        _frameIndex = 0;
-        _loop = loop;
-        _isPlaying = true;
-        SetCurrentSprite();
+        ResetWaiting();
     }
 
-    private void FinishOneShot()
+    private void ResetWaiting()
     {
-        if (_playTrappedSequence && !_playingMeow)
-        {
-            _playingMeow = true;
-            Play(_meowFrames, _reactionFrameRate, false);
-            return;
-        }
-
-        _playTrappedSequence = false;
-        _isPlaying = false;
-        _spriteRenderer.sprite = _sittingFrame;
+        _waitTimer = 0f;
+        _meowed = false;
+        _licking = false;
+        if (_animator != null && _animator.runtimeAnimatorController != null)
+            _animator.SetBool(LickParam, false);
     }
 
-    private void SetCurrentSprite()
+    private bool IsIdle()
     {
-        Sprite frame = _activeFrames[_frameIndex];
-        if (frame == null)
-            return;
+        AnimatorStateInfo info = _animator.GetCurrentAnimatorStateInfo(0);
+        return info.shortNameHash == IdleState && !_animator.IsInTransition(0);
+    }
 
-        _spriteRenderer.sprite = frame;
+    private bool CanAnimate()
+    {
+        return _animator != null && _animator.isActiveAndEnabled && _animator.runtimeAnimatorController != null;
+    }
 
-        Transform spriteTransform = _spriteRenderer.transform;
-        Rect rect = frame.rect;
-        Vector2 pivot = frame.pivot;
-        float pixelsPerUnit = frame.pixelsPerUnit;
-        float horizontalOffset = (rect.width * 0.5f - pivot.x) / pixelsPerUnit;
-        if (_spriteRenderer.flipX)
-            horizontalOffset = -horizontalOffset;
-        Vector3 centerOffset = new Vector3(
-            horizontalOffset,
-            (rect.height * 0.5f - pivot.y) / pixelsPerUnit,
-            0f);
-        spriteTransform.localPosition = centerOffset;
+    private void ResetParameters()
+    {
+        _animator.SetBool(WalkingParam, false);
+        _animator.SetBool(RunningParam, false);
+        _animator.ResetTrigger(WakeParam);
+        _animator.SetBool(LickParam, false);
+        _licking = false;
+        _meowed = false;
+        _waitTimer = 0f;
+        _animator.ResetTrigger(MeowParam);
+        _animator.ResetTrigger(TrappedParam);
     }
 }
