@@ -60,6 +60,11 @@ public class GameFlowUI : MonoBehaviour
     [SerializeField] private Button _cancelOverwriteButton;
     [SerializeField] private Button _confirmOverwriteButton;
     [SerializeField] private TMP_Text _overwriteMessage;
+    [Tooltip("The editor's side panel; the board is framed in the screen space left of it.")]
+    [SerializeField] private RectTransform _editorSidebar;
+
+    private const float DefaultEditorSidebarFraction = 0.32f;
+    private const float EditorSidebarGap = 0.02f;
 
     private GameManager _gameManager;
     private GridManager _gridManager;
@@ -117,7 +122,11 @@ public class GameFlowUI : MonoBehaviour
         if (_levelButtonPrefab == null)
             Debug.LogError("Could not load the level button prefab from Resources/UI/LevelButton.", this);
 
+        if (_editorSidebar == null)
+            _editorSidebar = _editorPanel.transform.Find("Board Editor") as RectTransform;
+
         BindSceneControls();
+        CreateGameplayBackButton();
         ShowHome();
         return true;
     }
@@ -125,6 +134,7 @@ public class GameFlowUI : MonoBehaviour
     public void ShowHome()
     {
         _isEditing = false;
+        _gridManager.SetReservedRightFraction(0f);
         _gameManager.SetEditorMode(false);
         _gridManager.DestroyGrid();
         _homePanel.SetActive(true);
@@ -138,6 +148,7 @@ public class GameFlowUI : MonoBehaviour
     public void ShowLevels()
     {
         _isEditing = false;
+        _gridManager.SetReservedRightFraction(0f);
         _gameManager.SetEditorMode(false);
         _gridManager.DestroyGrid();
         _homePanel.SetActive(false);
@@ -152,6 +163,7 @@ public class GameFlowUI : MonoBehaviour
     public void ShowGameplay()
     {
         _isEditing = false;
+        _gridManager.SetReservedRightFraction(0f);
         _homePanel.SetActive(false);
         _levelsPanel.SetActive(false);
         _editorPanel.SetActive(false);
@@ -186,6 +198,7 @@ public class GameFlowUI : MonoBehaviour
         CancelJob();
         _history.Clear();
         _sizeSlider.SetValueWithoutNotify(_selectedSize);
+        _gridManager.SetReservedRightFraction(EditorSidebarFraction());
         RefreshEditorBoard(true);
         _homePanel.SetActive(false);
         _levelsPanel.SetActive(false);
@@ -323,6 +336,33 @@ public class GameFlowUI : MonoBehaviour
         }
 
         HideConfirmationPanels();
+    }
+
+    // Reuses the Levels screen's back button so gameplay gets a matching one without scene edits.
+    private void CreateGameplayBackButton()
+    {
+        if (_levelsBackButton == null)
+            return;
+
+        Button back = Instantiate(_levelsBackButton, _gameplayPanel.transform, false);
+        back.name = "GameplayBackButton";
+        back.onClick = new Button.ButtonClickedEvent();
+        back.onClick.AddListener(_gameManager.ContinueToLevels);
+    }
+
+    private float EditorSidebarFraction()
+    {
+        if (_editorSidebar == null)
+            return DefaultEditorSidebarFraction;
+
+        Vector3[] corners = new Vector3[4];
+        _editorSidebar.GetWorldCorners(corners);
+        Canvas canvas = _editorSidebar.GetComponentInParent<Canvas>();
+        Camera uiCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+            ? canvas.worldCamera
+            : null;
+        float left = RectTransformUtility.WorldToScreenPoint(uiCamera, corners[0]).x;
+        return Mathf.Clamp01(1f - left / Screen.width + EditorSidebarGap);
     }
 
     private void BindButton(Button button, UnityAction action, string referenceName)
@@ -719,10 +759,14 @@ public class GameFlowUI : MonoBehaviour
             LevelData level = levels[i];
             bool isCustom = LevelRepository.IsCustomLevel(level);
             bool isUnlocked = isCustom || unlocked.Contains(level.levelId);
-            string levelName = isCustom
-                ? $"LEVEL {level.customLevelNumber}"
-                : $"LEVEL {level.progressionOrder}  -  {level.displayName}";
-            string label = isUnlocked ? levelName : levelName + "  -  LOCKED";
+            // The hex buttons show just the level number; the full name goes in the hover tooltip.
+            int number = isCustom ? level.customLevelNumber : level.progressionOrder;
+            string label = number.ToString();
+            string tooltip = isCustom || string.IsNullOrWhiteSpace(level.displayName)
+                ? $"LEVEL {number}"
+                : $"LEVEL {number}  -  {level.displayName}";
+            if (!isUnlocked)
+                tooltip += "  -  LOCKED";
             GameObject rowObject = Instantiate(_levelButtonPrefab, _levelList, false);
             _spawnedLevelButtons.Add(rowObject);
             rowObject.name = $"LevelButton_{level.levelId}";
@@ -754,7 +798,7 @@ public class GameFlowUI : MonoBehaviour
             MenuButtonFeedback feedback = rowObject.GetComponent<MenuButtonFeedback>();
             if (feedback == null)
                 feedback = rowObject.AddComponent<MenuButtonFeedback>();
-            feedback.Initialize(_cursorTooltip, label.ToUpperInvariant());
+            feedback.Initialize(_cursorTooltip, tooltip.ToUpperInvariant());
         }
     }
 

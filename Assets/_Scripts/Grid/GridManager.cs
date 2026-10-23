@@ -12,6 +12,7 @@ public class GridManager : MonoBehaviour
     [SerializeField] public GameObject originObject;
     [SerializeField] private bool _debugGrid;
     [SerializeField, Min(0f)] private float _spawnWaveDuration = 0.9f;
+    [SerializeField, Min(0f)] private float _cameraMoveDuration = 0.45f;
 
     public Grid<GridMapObject> grid;
     public float fullNumberOfGrids;
@@ -25,6 +26,13 @@ public class GridManager : MonoBehaviour
     private GridTile[,] _tileObjects;
     private bool[,] _activeCells;
     private bool[,] _perimeterCells;
+    private bool _hasCameraHome;
+    private Vector3 _cameraHome;
+    private Vector2 _boardSize;
+    private float _reservedRightFraction;
+    private Coroutine _cameraMove;
+    private Vector3 _cameraTargetPosition;
+    private float _cameraTargetSize;
     public static GridManager Instance { get; private set; }
 
     public BoardShape Shape
@@ -419,27 +427,98 @@ public class GridManager : MonoBehaviour
             return;
         }
 
+        // The board always sits at the camera's starting centre; the camera moves to frame it.
+        bool firstFraming = !_hasCameraHome;
+        if (firstFraming)
+        {
+            _cameraHome = mainCamera.transform.position;
+            _hasCameraHome = true;
+        }
+
         float horizontalSpacing = ColumnPitch;
         float verticalSpacing = RowPitch;
         float rightmostRowOffset = height > 1 ? horizontalSpacing * 0.5f : 0f;
         float gridCenterX = TileWidth * 0.5f + ((width - 1) * horizontalSpacing + rightmostRowOffset) * 0.5f;
         float gridCenterY = TileHeight * 0.5f + (height - 1) * verticalSpacing * 0.5f;
-        float boardWidth = (width - 1) * horizontalSpacing + rightmostRowOffset + TileWidth;
-        float boardHeight = (height - 1) * verticalSpacing + TileHeight;
-        float visibleFraction = 1f - 2f * _cameraMargin;
-        float safeAspect = Mathf.Max(0.01f, mainCamera.aspect);
-        mainCamera.orthographicSize = Mathf.Max(
-            boardHeight / (2f * visibleFraction),
-            boardWidth / (2f * safeAspect * visibleFraction));
+        _boardSize = new Vector2(
+            (width - 1) * horizontalSpacing + rightmostRowOffset + TileWidth,
+            (height - 1) * verticalSpacing + TileHeight);
 
         Vector3 currentOrigin = originObject.transform.position;
-        float cameraDepth = (currentOrigin.z - mainCamera.transform.position.z) / cameraForward.z;
-        Vector3 screenCenter = mainCamera.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, cameraDepth));
+        float cameraDepth = (currentOrigin.z - _cameraHome.z) / cameraForward.z;
+        Vector3 homeCenter = _cameraHome + cameraForward * cameraDepth;
 
         originObject.transform.position = new Vector3(
-            screenCenter.x - gridCenterX,
-            screenCenter.y - gridCenterY,
+            homeCenter.x - gridCenterX,
+            homeCenter.y - gridCenterY,
             currentOrigin.z);
+        FrameCamera(mainCamera, !firstFraming);
+    }
+
+    // Keeps the right-hand fraction of the screen free (e.g. for the level editor panel) by
+    // sliding and zooming the camera so the board fits in the remaining space.
+    public void SetReservedRightFraction(float fraction)
+    {
+        fraction = Mathf.Clamp(fraction, 0f, 0.6f);
+        if (Mathf.Approximately(fraction, _reservedRightFraction))
+            return;
+
+        _reservedRightFraction = fraction;
+        Camera mainCamera = Camera.main;
+        if (mainCamera != null && _hasCameraHome && _boardSize != Vector2.zero)
+            FrameCamera(mainCamera, true);
+    }
+
+    private void FrameCamera(Camera mainCamera, bool animate)
+    {
+        float visibleFraction = 1f - 2f * _cameraMargin;
+        float usableAspect = Mathf.Max(0.01f, mainCamera.aspect * (1f - _reservedRightFraction));
+        float size = Mathf.Max(
+            _boardSize.y / (2f * visibleFraction),
+            _boardSize.x / (2f * usableAspect * visibleFraction));
+        // Shift right so the board centre lands in the middle of the unreserved area.
+        Vector3 position = _cameraHome +
+                           mainCamera.transform.right * (_reservedRightFraction * size * mainCamera.aspect);
+
+        bool sameTarget = _cameraMove != null &&
+                          Mathf.Approximately(size, _cameraTargetSize) &&
+                          (position - _cameraTargetPosition).sqrMagnitude < 0.000001f;
+        if (sameTarget)
+            return;
+
+        if (_cameraMove != null)
+            StopCoroutine(_cameraMove);
+        _cameraMove = null;
+        _cameraTargetPosition = position;
+        _cameraTargetSize = size;
+
+        bool alreadyThere = Mathf.Approximately(mainCamera.orthographicSize, size) &&
+                            (mainCamera.transform.position - position).sqrMagnitude < 0.000001f;
+        if (!animate || alreadyThere || _cameraMoveDuration <= 0f)
+        {
+            mainCamera.orthographicSize = size;
+            mainCamera.transform.position = position;
+            return;
+        }
+
+        _cameraMove = StartCoroutine(MoveCamera(mainCamera, position, size));
+    }
+
+    private System.Collections.IEnumerator MoveCamera(Camera mainCamera, Vector3 position, float size)
+    {
+        Vector3 startPosition = mainCamera.transform.position;
+        float startSize = mainCamera.orthographicSize;
+        for (float t = 0f; t < _cameraMoveDuration; t += Time.unscaledDeltaTime)
+        {
+            float k = Mathf.SmoothStep(0f, 1f, t / _cameraMoveDuration);
+            mainCamera.transform.position = Vector3.Lerp(startPosition, position, k);
+            mainCamera.orthographicSize = Mathf.Lerp(startSize, size, k);
+            yield return null;
+        }
+
+        mainCamera.transform.position = position;
+        mainCamera.orthographicSize = size;
+        _cameraMove = null;
     }
 
     private void UpdateCounters()

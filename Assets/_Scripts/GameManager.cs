@@ -26,6 +26,7 @@ public class GameManager : MonoBehaviour
     private LevelLoader _levelLoader;
     private TutorialPresenter _tutorialPresenter;
     private GameSaveData _saveData;
+    private Button _levelEndLevelsButton;
     private bool _gameOver;
     private bool _editorMode;
 
@@ -86,6 +87,7 @@ public class GameManager : MonoBehaviour
     {
         _gridManager = GridManager.Instance;
         _catMovement = _cat != null ? _cat.GetComponent<CatMovement>() : null;
+        CreateLevelEndLevelsButton();
         if (_levelEndPanel != null)
             _levelEndPanel.SetActive(false);
 
@@ -228,8 +230,31 @@ public class GameManager : MonoBehaviour
             _levelEndRetryButton.gameObject.SetActive(!showContinue);
         if (_levelEndContinueButton != null)
             _levelEndContinueButton.gameObject.SetActive(showContinue);
+        // After a loss, offer a way back to the level list alongside Retry.
+        if (_levelEndLevelsButton != null)
+            _levelEndLevelsButton.gameObject.SetActive(!showContinue);
         if (_levelEndPanel != null)
             _levelEndPanel.SetActive(true);
+    }
+
+    // Copies the Retry button so the extra button matches its style and the panel's layout group.
+    private void CreateLevelEndLevelsButton()
+    {
+        if (_levelEndRetryButton == null)
+            return;
+
+        _levelEndLevelsButton = Instantiate(
+            _levelEndRetryButton,
+            _levelEndRetryButton.transform.parent,
+            false);
+        _levelEndLevelsButton.name = "LevelsButton";
+        _levelEndLevelsButton.onClick = new Button.ButtonClickedEvent();
+        _levelEndLevelsButton.onClick.AddListener(ContinueToLevels);
+        _levelEndLevelsButton.transform.SetSiblingIndex(
+            _levelEndRetryButton.transform.GetSiblingIndex() + 1);
+        TMP_Text label = _levelEndLevelsButton.GetComponentInChildren<TMP_Text>(true);
+        if (label != null)
+            label.text = "LEVELS";
     }
 
     private void PlaceCatAtCenter()
