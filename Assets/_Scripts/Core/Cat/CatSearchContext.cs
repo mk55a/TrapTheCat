@@ -4,13 +4,15 @@ namespace TrapTheCat.Core
     {
         public CatSearchBoard Board { get; private set; }
         public CatEscapeRouteFinder Routes { get; private set; }
-        public PlayerBlockPredictor BlockPredictor { get; private set; }
+        public CatEscapeRouteCounter RouteCounter { get; private set; }
+        public CatEscapeRaceEstimator EscapeRace { get; private set; }
 
         public CatSearchContext(CatSearchBoard board)
         {
             Board = board;
             Routes = new CatEscapeRouteFinder(board);
-            BlockPredictor = new PlayerBlockPredictor(Routes);
+            RouteCounter = new CatEscapeRouteCounter(board);
+            EscapeRace = new CatEscapeRaceEstimator(board);
         }
     }
 }

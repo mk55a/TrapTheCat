@@ -24,7 +24,7 @@ namespace TrapTheCat.Core
             _queue = new int[board.Count];
         }
 
-        public void SearchFrom(int from, int treatAsOpen = NoCell)
+        public void SearchFrom(int from)
         {
             for (int i = 0; i < _board.Count; i++)
             {
@@ -46,7 +46,7 @@ namespace TrapTheCat.Core
                 for (int i = 0; i < neighbours.Length; i++)
                 {
                     int next = neighbours[i];
-                    if (_distance[next] >= 0 || (_board.IsBlocked(next) && next != treatAsOpen))
+                    if (_distance[next] >= 0 || _board.IsBlocked(next))
                         continue;
 
                     _distance[next] = _distance[current] + 1;
@@ -61,34 +61,14 @@ namespace TrapTheCat.Core
             return _distance[cell];
         }
 
-        public int PreviousOnRoute(int cell)
-        {
-            return _previous[cell];
-        }
-
         public bool IsReachableExit(int cell)
         {
             return _board.IsExit(cell) && _distance[cell] > 0;
         }
 
-        public int FirstStepTowards(int from, int target)
+        public int NearestExit(int from)
         {
-            if (target < 0 || _distance[target] <= 0)
-                return NoCell;
-
-            int current = target;
-            while (_previous[current] != from)
-            {
-                current = _previous[current];
-                if (current < 0)
-                    return NoCell;
-            }
-            return current;
-        }
-
-        public int NearestExit(int from, int treatAsOpen = NoCell)
-        {
-            SearchFrom(from, treatAsOpen);
+            SearchFrom(from);
             int best = NoCell;
             for (int i = 0; i < _board.Count; i++)
             {
@@ -98,44 +78,61 @@ namespace TrapTheCat.Core
             return best;
         }
 
-        public bool TryMeasureExits(int from, int slack, out int shortest, out int nearbyExits)
+        public int NearestExitDistance(int from)
         {
             SearchFrom(from);
-            shortest = int.MaxValue;
-            nearbyExits = 0;
+            int shortest = -1;
             for (int i = 0; i < _board.Count; i++)
             {
-                if (IsReachableExit(i) && _distance[i] < shortest)
+                if (IsReachableExit(i) && (shortest < 0 || _distance[i] < shortest))
                     shortest = _distance[i];
             }
-
-            if (shortest == int.MaxValue)
-                return false;
-
-            for (int i = 0; i < _board.Count; i++)
-            {
-                if (IsReachableExit(i) && _distance[i] <= shortest + slack)
-                    nearbyExits++;
-            }
-            return true;
+            return shortest;
         }
 
-        public bool CanReachExit(int from)
+        public int StepTowards(int from, int exit)
         {
-            return TryMeasureExits(from, 0, out int shortest, out int nearbyExits);
+            SearchFrom(exit);
+            int best = NoCell;
+            int[] neighbours = _board.Neighbours(from);
+            for (int i = 0; i < neighbours.Length; i++)
+            {
+                int step = neighbours[i];
+                if (_board.IsBlocked(step) || _distance[step] < 0)
+                    continue;
+
+                if (best < 0 || IsBetterStep(step, best))
+                    best = step;
+            }
+            return best;
         }
 
         public List<int> RouteToNearestExit(int from)
         {
+            return RouteTo(from, NearestExit(from));
+        }
+
+        public List<int> RouteTo(int from, int exit)
+        {
             List<int> route = new List<int>();
-            int exit = NearestExit(from);
-            if (exit < 0)
+            if (exit < 0 || _board.IsBlocked(exit))
+                return route;
+
+            SearchFrom(from);
+            if (_distance[exit] < 0)
                 return route;
 
             for (int current = exit; current >= 0; current = _previous[current])
                 route.Add(current);
             route.Reverse();
             return route;
+        }
+
+        private bool IsBetterStep(int step, int best)
+        {
+            if (_distance[step] != _distance[best])
+                return _distance[step] < _distance[best];
+            return _board.CountOpenNeighbours(step) > _board.CountOpenNeighbours(best);
         }
     }
 }

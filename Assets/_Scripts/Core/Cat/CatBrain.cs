@@ -30,10 +30,21 @@ namespace TrapTheCat.Core
             if (_search == null || _search.Board != board)
                 _search = new CatSearchContext(board);
 
-            if (!_search.Routes.CanReachExit(cat))
-                return CatEscapeRouteFinder.NoCell;
+            int adjacentExit = AdjacentOpenExit(board, cat);
+            if (adjacentExit >= 0)
+                return adjacentExit;
 
             return _strategy.ChooseMove(_search, cat);
+        }
+
+        private static int AdjacentOpenExit(CatSearchBoard board, int cat)
+        {
+            foreach (int neighbour in board.OpenNeighbours(cat))
+            {
+                if (board.IsExit(neighbour))
+                    return neighbour;
+            }
+            return CatEscapeRouteFinder.NoCell;
         }
 
         private static CatMoveStrategy StrategyFor(CatDifficulty difficulty)
@@ -43,7 +54,7 @@ namespace TrapTheCat.Core
                 case CatDifficulty.Easy:
                     return new NearestExitStrategy();
                 case CatDifficulty.Hard:
-                    return new LookaheadStrategy();
+                    return new EscapeRaceStrategy();
                 default:
                     return new CautiousStrategy();
             }

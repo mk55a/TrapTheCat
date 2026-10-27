@@ -51,7 +51,7 @@ namespace TrapTheCat.Core
 
             Vector2Int to = catBoard.Cell(next);
             List<Vector2Int> route = new List<Vector2Int>();
-            foreach (int index in new CatEscapeRouteFinder(catBoard).RouteToNearestExit(next))
+            foreach (int index in PlannedRoute(catBoard, next))
                 route.Add(catBoard.Cell(index));
             if (route.Count == 0)
                 route.Add(to);
@@ -61,6 +61,13 @@ namespace TrapTheCat.Core
             if (escaped)
                 Result = GameResult.Lost;
             return CatTurn.MovedTo(to, escaped, route);
+        }
+
+        private List<int> PlannedRoute(CatSearchBoard catBoard, int from)
+        {
+            CatEscapeRouteFinder routes = new CatEscapeRouteFinder(catBoard);
+            List<int> route = routes.RouteTo(from, _brain.Target);
+            return route.Count > 0 ? route : routes.RouteToNearestExit(from);
         }
     }
 }

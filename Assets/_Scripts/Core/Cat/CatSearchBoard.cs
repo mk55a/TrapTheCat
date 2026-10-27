@@ -113,6 +113,11 @@ namespace TrapTheCat.Core
             return count;
         }
 
+        public int CountOpenNeighbours(int index)
+        {
+            return _neighbours[index].Length - CountBlockedNeighbours(index);
+        }
+
         public List<int> OpenNeighbours(int index)
         {
             List<int> open = new List<int>(6);
