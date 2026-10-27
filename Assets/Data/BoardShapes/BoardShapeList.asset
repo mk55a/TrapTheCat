@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67f699ab26dd4d70b56133b4f9e44d97, type: 3}
+  m_Name: BoardShapeList
+  m_EditorClassIdentifier: 
+  _shapes:
+  - {fileID: 11400000, guid: fd50cbf7aeb547e4b75ee31e94788bda, type: 2}
+  - {fileID: 11400000, guid: b1c9326c4e8b424faba21b2e34673649, type: 2}
+  - {fileID: 11400000, guid: 3468ab43f0094f6ba970430b00d71a5f, type: 2}
+  - {fileID: 11400000, guid: 8982501930ba42f78376b032f9047833, type: 2}
