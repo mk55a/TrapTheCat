@@ -1073,6 +1073,85 @@
                 }
             ],
             "tutorialSteps": []
+        },
+        {
+            "formatVersion": 1,
+            "levelId": "custom-level-13",
+            "displayName": "Level 13",
+            "progressionOrder": 1013,
+            "customLevelNumber": 13,
+            "boardShape": "Circle",
+            "width": 10,
+            "height": 10,
+            "hasCatStart": true,
+            "catStart": {
+                "x": 4,
+                "y": 4
+            },
+            "catDifficulty": "Hard",
+            "blockedCells": [
+                {
+                    "x": 7,
+                    "y": 7
+                },
+                {
+                    "x": 2,
+                    "y": 6
+                },
+                {
+                    "x": 7,
+                    "y": 6
+                },
+                {
+                    "x": 4,
+                    "y": 2
+                },
+                {
+                    "x": 6,
+                    "y": 8
+                },
+                {
+                    "x": 3,
+                    "y": 3
+                },
+                {
+                    "x": 4,
+                    "y": 6
+                },
+                {
+                    "x": 3,
+                    "y": 7
+                },
+                {
+                    "x": 6,
+                    "y": 3
+                },
+                {
+                    "x": 6,
+                    "y": 4
+                },
+                {
+                    "x": 5,
+                    "y": 7
+                },
+                {
+                    "x": 3,
+                    "y": 4
+                },
+                {
+                    "x": 7,
+                    "y": 1
+                },
+                {
+                    "x": 4,
+                    "y": 5
+                },
+                {
+                    "x": 7,
+                    "y": 5
+                }
+            ],
+            "tutorialSteps": []
         }
     ]
 }

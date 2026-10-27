@@ -11,7 +11,7 @@ public class CatBrainTests
         List<Vector2Int> blocks,
         Vector2Int cat)
     {
-        CatBoard board = new CatBoard(new BoardLayout(11, 11, shape).CreateActiveMask(), blocks);
+        CatSearchBoard board = new CatSearchBoard(new BoardLayout(11, 11, shape).CreateActiveMask(), blocks);
         int move = new CatBrain(difficulty).ChooseMove(board, board.Index(cat.x, cat.y));
         return move < 0 ? new Vector2Int(-1, -1) : board.Cell(move);
     }
@@ -74,7 +74,7 @@ public class CatBrainTests
     [Test]
     public void EasyCat_RemembersItsTargetExit_OtherCatsDoNot()
     {
-        CatBoard board = new CatBoard(new BoardLayout(11, 11, TestShapes.Rectangle).CreateActiveMask(), TestBoards.NoBlocks());
+        CatSearchBoard board = new CatSearchBoard(new BoardLayout(11, 11, TestShapes.Rectangle).CreateActiveMask(), TestBoards.NoBlocks());
         int cat = board.Index(5, 5);
 
         CatBrain easy = new CatBrain(CatDifficulty.Easy);

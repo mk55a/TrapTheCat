@@ -40,8 +40,8 @@ namespace TrapTheCat.Core
 
         private CatTurn PlayCatTurn()
         {
-            CatBoard catBoard = new CatBoard(Board.Layout.CreateActiveMask(), Board.BlockedCells);
-            int from = catBoard.Index(Board.CatCell.x, Board.CatCell.y);
+            CatSearchBoard catBoard = CatSearchBoard.FromBoard(Board);
+            int from = catBoard.Index(Board.CatCell);
             int next = _brain.ChooseMove(catBoard, from);
             if (next < 0)
             {
@@ -51,7 +51,7 @@ namespace TrapTheCat.Core
 
             Vector2Int to = catBoard.Cell(next);
             List<Vector2Int> route = new List<Vector2Int>();
-            foreach (int index in catBoard.BuildRouteToNearestExit(next))
+            foreach (int index in new CatEscapeRouteFinder(catBoard).RouteToNearestExit(next))
                 route.Add(catBoard.Cell(index));
             if (route.Count == 0)
                 route.Add(to);

@@ -22,6 +22,7 @@ namespace TrapTheCat.UI
         [SerializeField] private Button _placeBlocksButton;
         [SerializeField] private Button _setupCatButton;
         [SerializeField] private Button _changeDifficultyButton;
+        [SerializeField] private TMP_Text _difficultyText;
         [SerializeField] private Button _saveLevelButton;
         [SerializeField] private Button _validateButton;
         [SerializeField] private Button _generateButton;
@@ -33,7 +34,6 @@ namespace TrapTheCat.UI
         [SerializeField] private TMP_Text _shapeLabel;
         [SerializeField] private TMP_Text _sizeLabel;
         [SerializeField] private TMP_Text _lockLabel;
-        [SerializeField] private TMP_Text _difficultyLabel;
         [Tooltip("The editor's side panel; the board is framed in the screen space left of it.")]
         [SerializeField] private RectTransform _editorSidebar;
         [SerializeField] private LoadingRing _loadingRing;
@@ -220,8 +220,7 @@ namespace TrapTheCat.UI
             _sizeLabel.text = $"SIZE {_session.Size}";
             _lockLabel.text = locked ? "BOARD LOCKED" : "BOARD UNLOCKED";
             _lockButtonLabel.text = locked ? "UNLOCK BOARD" : "LOCK BOARD";
-            if (_difficultyLabel != null)
-                _difficultyLabel.text = $"CAT: {_session.Difficulty.ToString().ToUpperInvariant()}";
+            _difficultyText.text = $"DIFFICULTY: {_session.Difficulty.ToString().ToUpperInvariant()}";
             _previousShapeButton.interactable = !locked;
             _nextShapeButton.interactable = !locked;
             _sizeSlider.interactable = !locked;

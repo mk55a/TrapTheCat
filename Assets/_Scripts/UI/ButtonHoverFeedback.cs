@@ -26,12 +26,7 @@ namespace TrapTheCat.UI
         private void Awake()
         {
             _baseScale = _rectTransform.localScale;
-            _baseColor = _targetGraphic.color;
-            _hoverColor = new Color(
-                Mathf.Min(1f, _baseColor.r * 1.12f + 0.08f),
-                Mathf.Min(1f, _baseColor.g * 1.12f + 0.08f),
-                Mathf.Min(1f, _baseColor.b * 1.12f + 0.08f),
-                Mathf.Max(_baseColor.a, 0.95f));
+            SetBaseColor(_targetGraphic.color);
 
             if (_button.transition == Selectable.Transition.ColorTint)
             {
@@ -44,6 +39,17 @@ namespace TrapTheCat.UI
                 colors.fadeDuration = 0.08f;
                 _button.colors = colors;
             }
+        }
+
+        public void SetBaseColor(Color color)
+        {
+            _baseColor = color;
+            _hoverColor = new Color(
+                Mathf.Min(1f, color.r * 1.12f + 0.08f),
+                Mathf.Min(1f, color.g * 1.12f + 0.08f),
+                Mathf.Min(1f, color.b * 1.12f + 0.08f),
+                Mathf.Max(color.a, 0.95f));
+            _targetGraphic.color = color;
         }
 
         public void SetTooltip(CursorTooltip tooltip, string tooltipText)

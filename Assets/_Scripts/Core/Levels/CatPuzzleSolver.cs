@@ -6,7 +6,8 @@ namespace TrapTheCat.Core
 {
     public sealed class CatPuzzleSolver
     {
-        private readonly CatBoard _board;
+        private readonly CatSearchBoard _board;
+        private readonly PlayerBlockPredictor _blockPredictor;
         private readonly int _breadth;
         private readonly int _nodeBudget;
         private readonly long _timeBudgetMs;
@@ -18,9 +19,10 @@ namespace TrapTheCat.Core
         private int _nodes;
         private bool _outOfBudget;
 
-        private CatPuzzleSolver(CatBoard board, int breadth, int nodeBudget, long timeBudgetMs)
+        private CatPuzzleSolver(CatSearchBoard board, int breadth, int nodeBudget, long timeBudgetMs)
         {
             _board = board;
+            _blockPredictor = new PlayerBlockPredictor(new CatEscapeRouteFinder(board));
             _breadth = breadth;
             _nodeBudget = nodeBudget;
             _timeBudgetMs = timeBudgetMs;
@@ -47,7 +49,7 @@ namespace TrapTheCat.Core
             int nodeBudget = 400000,
             long timeBudgetMs = 4000)
         {
-            CatBoard board = new CatBoard(active, blockedCells);
+            CatSearchBoard board = new CatSearchBoard(active, blockedCells);
             CatPuzzleSolver solver = new CatPuzzleSolver(board, breadth, nodeBudget, timeBudgetMs);
             return solver.Run(board.Index(catStart.x, catStart.y), difficulty, maxPlayerMoves);
         }
@@ -96,7 +98,7 @@ namespace TrapTheCat.Core
             _nodes = 0;
             _outOfBudget = false;
             _clock.Restart();
-            List<int> candidates = _board.GetCandidateBlocks(cat, _breadth);
+            List<int> candidates = _blockPredictor.LikelyBlocks(cat, _breadth);
             solution.FirstMoveOptions = candidates.Count;
             foreach (int cell in candidates)
             {
@@ -104,7 +106,7 @@ namespace TrapTheCat.Core
                 CatBrain reply = brain.Clone();
                 int next = reply.ChooseMove(_board, cat);
                 bool wins = next < 0 ||
-                            (!_board.IsPerimeter(next) && solution.MinPlayerMoves > 1 &&
+                            (!_board.IsExit(next) && solution.MinPlayerMoves > 1 &&
                              CanWin(next, reply, solution.MinPlayerMoves - 1,
                                  rootHash ^ _blockKeys[cell], new List<int>()));
                 _board.SetBlocked(cell, false);
@@ -127,14 +129,14 @@ namespace TrapTheCat.Core
             if (_failedDepth.TryGetValue(key, out int failedDepth) && failedDepth >= depth)
                 return false;
 
-            List<int> candidates = _board.GetCandidateBlocks(cat, _breadth);
+            List<int> candidates = _blockPredictor.LikelyBlocks(cat, _breadth);
             foreach (int cell in candidates)
             {
                 _board.SetBlocked(cell, true);
                 CatBrain reply = brain.Clone();
                 int next = reply.ChooseMove(_board, cat);
                 bool wins = next < 0;
-                if (!wins && !_board.IsPerimeter(next) && depth > 1)
+                if (!wins && !_board.IsExit(next) && depth > 1)
                     wins = CanWin(next, reply, depth - 1, blockHash ^ _blockKeys[cell], line);
                 _board.SetBlocked(cell, false);
 

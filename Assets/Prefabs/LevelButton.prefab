@@ -21,36 +21,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &2935132190643906624
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 100000}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 845eb554524a93f4f8393ec51ae094b9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _button: {fileID: 11400000}
-  _numberLabel: {fileID: 11400002}
-  _feedback: {fileID: 1577364583248753474}
---- !u!114 &1577364583248753474
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 100000}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9c93c2c34fd74454bd01ce6270c126f4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier:
-  _rectTransform: {fileID: 22400000}
-  _button: {fileID: 11400000}
-  _targetGraphic: {fileID: 11400001}
 --- !u!224 &22400000
 RectTransform:
   m_ObjectHideFlags: 0
@@ -153,6 +123,43 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 0.33
+--- !u!114 &1577364583248753474
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c93c2c34fd74454bd01ce6270c126f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _rectTransform: {fileID: 22400000}
+  _button: {fileID: 11400000}
+  _targetGraphic: {fileID: 11400001}
+--- !u!114 &2935132190643906624
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 845eb554524a93f4f8393ec51ae094b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _button: {fileID: 11400000}
+  _numberLabel: {fileID: 11400002}
+  _feedback: {fileID: 1577364583248753474}
+  _difficultyColors:
+  - difficulty: 0
+    color: {r: 0.039215688, g: 1, b: 0, a: 1}
+  - difficulty: 1
+    color: {r: 1, g: 0.94291973, b: 0, a: 1}
+  - difficulty: 2
+    color: {r: 1, g: 0.30588236, b: 0, a: 1}
 --- !u!1 &100001
 GameObject:
   m_ObjectHideFlags: 0
@@ -227,8 +234,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4282345360
-  m_fontColor: {r: 0.5647059, g: 0.4039216, b: 0.24705884, a: 1}
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -245,7 +252,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 44
+  m_fontSize: 35.75
   m_fontSizeBase: 25
   m_fontWeight: 700
   m_enableAutoSizing: 1
