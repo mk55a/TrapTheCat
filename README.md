@@ -17,12 +17,27 @@ A hex-grid puzzle game made in Unity. Block tiles to surround the cat before it 
 - Hand-made levels with progression and unlocks
 - Level editor: pick a board shape and size, place blocks and the cat, validate that the level is winnable, and save it
 
+### Screenshots
+
+| Home | Gameplay |
+|---|---|
+| ![Home screen](Docs/Screenshots/home-screen.png) | ![Playing a hexagon level](Docs/Screenshots/gameplay-hexagon.png) |
+
+| Level editor: square board | Level editor: hexagon board |
+|---|---|
+| ![Level editor with a square board](Docs/Screenshots/level-editor-square.png) | ![Level editor with a hexagon board](Docs/Screenshots/level-editor-hexagon.png) |
+
 ## Playable ad
 
 A short playable ad version of the game, built with the Unity Playworks (Luna) plugin:
 
 - [Play the playable ad in the browser](https://assets.lunalabs.io/uploads/apps/build/20029179/ff604628bde0e9d60c13f4f039dce50a/031a69f9aea72bcaa723bb616c51e2b0.html) (hosted by Playworks)
 - [`Playable/TrapTheCat_UnityAds.html`](Playable/TrapTheCat_UnityAds.html): the exported Unity Ads creative (single HTML file, opens in any browser)
+
+<p>
+  <img src="Docs/Screenshots/playable-portrait.png" alt="Playable ad in portrait" height="300">
+  <img src="Docs/Screenshots/playable-landscape.png" alt="Playable ad in landscape" height="300">
+</p>
 
 ## Built with
 
