@@ -158,5 +158,4 @@ Assets/
 ## Built with
 
 - Unity 2022.3.62f1
-- TextMeshPro
 - Unity Playworks plugin 7.2.0 (playable ad)
