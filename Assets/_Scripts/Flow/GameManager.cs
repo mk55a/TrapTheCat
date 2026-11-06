@@ -75,7 +75,7 @@ namespace TrapTheCat.Flow
             _gameScreen.LevelListClicked -= ShowLevelList;
             _editorScreen.BackClicked -= ShowHome;
             _editorScreen.LevelSaved -= ShowLevelList;
-            _editorScreen.CatVisibilityChanged -= SetCatVisible;
+            _editorScreen.DraftBoardShown -= ShowDraftCat;
         }
 
         private void CreateScreens()
@@ -97,7 +97,7 @@ namespace TrapTheCat.Flow
             _gameScreen.LevelListClicked += ShowLevelList;
             _editorScreen.BackClicked += ShowHome;
             _editorScreen.LevelSaved += ShowLevelList;
-            _editorScreen.CatVisibilityChanged += SetCatVisible;
+            _editorScreen.DraftBoardShown += ShowDraftCat;
         }
 
         private void ShowHome()
@@ -178,9 +178,11 @@ namespace TrapTheCat.Flow
             _gridManager.DestroyGrid();
         }
 
-        private void SetCatVisible(bool visible)
+        private void ShowDraftCat(BoardState board)
         {
-            _catView.gameObject.SetActive(visible);
+            _catView.gameObject.SetActive(board.HasCat);
+            if (board.HasCat)
+                _catView.PlaceAt(board.CatCell);
         }
 
         private bool IsBoardCellSelectable(Vector2Int cell)

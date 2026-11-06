@@ -48,7 +48,7 @@ namespace TrapTheCat.UI
 
         public event Action BackClicked;
         public event Action LevelSaved;
-        public event Action<bool> CatVisibilityChanged;
+        public event Action<BoardState> DraftBoardShown;
 
         public bool CanEditTiles
         {
@@ -209,7 +209,7 @@ namespace TrapTheCat.UI
         private void ShowBoard(bool animate)
         {
             _gridManager.CreateGrid(_session.Board, animate);
-            CatVisibilityChanged?.Invoke(_session.Board.HasCat);
+            DraftBoardShown?.Invoke(_session.Board);
             ClearStatus();
         }
 

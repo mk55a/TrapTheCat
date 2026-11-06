@@ -12,6 +12,7 @@ namespace TrapTheCat.Presentation
         private static readonly int TrappedParam = Animator.StringToHash("Trapped");
         private static readonly int SleepingAnimation = Animator.StringToHash("Sleeping");
         private static readonly int IdleAnimation = Animator.StringToHash("Idle");
+        private static readonly int LickingAnimation = Animator.StringToHash("Licking");
 
         [SerializeField] private SpriteRenderer _spriteRenderer;
         [SerializeField] private Animator _animator;
@@ -36,6 +37,9 @@ namespace TrapTheCat.Presentation
                 if (_wakeCountdown < 0f)
                     Wake();
             }
+
+            if (State == CatState.Licking && HasFinishedOneLick())
+                EnterIdle();
 
             if (State != CatState.Idle || _profile == null)
                 return;
@@ -100,6 +104,12 @@ namespace TrapTheCat.Presentation
             State = escaping ? CatState.Running : CatState.Walking;
         }
 
+        public void SetPlaybackSpeed(float speed)
+        {
+            if (_animator != null)
+                _animator.speed = speed;
+        }
+
         public void ShowTrapped()
         {
             if (!CanAnimate())
@@ -148,6 +158,12 @@ namespace TrapTheCat.Presentation
         {
             AnimatorStateInfo info = _animator.GetCurrentAnimatorStateInfo(0);
             return info.shortNameHash == IdleAnimation && !_animator.IsInTransition(0);
+        }
+
+        private bool HasFinishedOneLick()
+        {
+            AnimatorStateInfo info = _animator.GetCurrentAnimatorStateInfo(0);
+            return info.shortNameHash == LickingAnimation && info.normalizedTime >= 1f;
         }
 
         private bool CanAnimate()

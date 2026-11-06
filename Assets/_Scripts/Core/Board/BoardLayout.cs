@@ -84,14 +84,25 @@ namespace TrapTheCat.Core
         public static List<Vector2Int> FindActiveNeighbours(bool[,] activeCells, int x, int y)
         {
             List<Vector2Int> neighbours = new List<Vector2Int>(6);
-            bool oddRow = (y & 1) == 1;
-            AddIfActive(neighbours, activeCells, x - 1, y);
-            AddIfActive(neighbours, activeCells, x + 1, y);
-            AddIfActive(neighbours, activeCells, x + (oddRow ? 0 : -1), y - 1);
-            AddIfActive(neighbours, activeCells, x + (oddRow ? 1 : 0), y - 1);
-            AddIfActive(neighbours, activeCells, x + (oddRow ? 0 : -1), y + 1);
-            AddIfActive(neighbours, activeCells, x + (oddRow ? 1 : 0), y + 1);
+            foreach (Vector2Int cell in SurroundingCells(new Vector2Int(x, y)))
+                AddIfActive(neighbours, activeCells, cell.x, cell.y);
             return neighbours;
+        }
+
+        public static Vector2Int[] SurroundingCells(Vector2Int cell)
+        {
+            bool oddRow = (cell.y & 1) == 1;
+            int lowerColumn = cell.x + (oddRow ? 0 : -1);
+            int upperColumn = cell.x + (oddRow ? 1 : 0);
+            return new[]
+            {
+                new Vector2Int(cell.x - 1, cell.y),
+                new Vector2Int(cell.x + 1, cell.y),
+                new Vector2Int(lowerColumn, cell.y - 1),
+                new Vector2Int(upperColumn, cell.y - 1),
+                new Vector2Int(lowerColumn, cell.y + 1),
+                new Vector2Int(upperColumn, cell.y + 1)
+            };
         }
 
         private int Index(int x, int y)

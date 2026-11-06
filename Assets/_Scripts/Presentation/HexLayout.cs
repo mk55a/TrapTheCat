@@ -77,6 +77,27 @@ namespace TrapTheCat.Presentation
             return found;
         }
 
+        public Vector3 DirectionOffBoard(Vector2Int edgeCell, Vector3 preferredDirection, BoardLayout board)
+        {
+            Vector3 centre = CellToWorld(edgeCell);
+            Vector3 best = preferredDirection.normalized;
+            float bestAlignment = float.MinValue;
+            foreach (Vector2Int cell in BoardLayout.SurroundingCells(edgeCell))
+            {
+                if (board.Contains(cell))
+                    continue;
+
+                Vector3 direction = (CellToWorld(cell) - centre).normalized;
+                float alignment = Vector3.Dot(direction, preferredDirection.normalized);
+                if (alignment > bestAlignment)
+                {
+                    bestAlignment = alignment;
+                    best = direction;
+                }
+            }
+            return best;
+        }
+
         public Vector2 GetBoardSize(int width, int height)
         {
             return new Vector2(

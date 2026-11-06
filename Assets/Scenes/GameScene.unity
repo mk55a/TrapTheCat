@@ -913,6 +913,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _speed: 2.5
+  _escapeRunSpeed: 4.4
+  _escapeLegSpeed: 1.8
+  _pauseAfterEscape: 0.25
+  _camera: {fileID: 2143032227}
   _gridManager: {fileID: 407359495}
   _animation: {fileID: 1888252285}
   _body: {fileID: 823751450}

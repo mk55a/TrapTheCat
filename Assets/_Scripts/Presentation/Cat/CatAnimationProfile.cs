@@ -9,7 +9,7 @@ namespace TrapTheCat.Presentation
         [SerializeField, Min(0f)] private float _sleepSeconds = 1.5f;
         [Tooltip("Seconds of waiting before the cat meows once.")]
         [SerializeField, Min(1f)] private float _meowAfterSeconds = 15f;
-        [Tooltip("Seconds of waiting before the cat licks itself until the player moves.")]
+        [Tooltip("Seconds of waiting before the cat licks itself once. The wait then starts over.")]
         [SerializeField, Min(1f)] private float _lickAfterSeconds = 25f;
 
         public float SleepSeconds
